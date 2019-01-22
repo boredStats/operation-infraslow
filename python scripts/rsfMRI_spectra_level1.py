@@ -4,15 +4,18 @@ Created on Wed Nov 14 15:16:03 2018
 
 @author: jah150330
 """
+import sys
+sys.path.append("..")
+
+import os
 import numpy as np
 import pandas as pd
-
 import proj_utils as pu
+
 pdObj = pu.proj_data()
 pData = pdObj.get_data()
 pdir = pu._get_proj_dir()
 
-import os
 path = pdir+'/data/timeseries_rs-fMRI'
 #os.chdir(path)
 

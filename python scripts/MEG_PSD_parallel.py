@@ -4,6 +4,9 @@ Created on Tue Nov 13 15:00:10 2018
 
 @author: jah150330
 """
+import sys
+sys.path.append("..")
+
 import numpy as np
 import pandas as pd
 

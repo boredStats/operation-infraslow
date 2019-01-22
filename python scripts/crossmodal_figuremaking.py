@@ -4,6 +4,9 @@ Created on Wed Nov 14 16:25:44 2018
 
 @author: jah150330
 """
+import sys
+sys.path.append("..")
+
 import numpy as np
 import pandas as pd
 import seaborn as sns

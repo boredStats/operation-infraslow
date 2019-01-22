@@ -4,6 +4,8 @@ Created on Tue Nov  6 11:20:05 2018
 
 @author: jah150330
 """
+import sys
+sys.path.append("..")
 
 import proj_utils as pu
 pdObj = pu.proj_data()
