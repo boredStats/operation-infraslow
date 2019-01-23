@@ -17,7 +17,6 @@ pData = pdObj.get_data()
 pdir = pu._get_proj_dir()
 
 path = pdir+'/data/timeseries_rs-fMRI'
-#os.chdir(path)
 
 labels = pData['roiLabels']
 database = pData['database']
@@ -25,12 +24,12 @@ database = pData['database']
 filelist = os.listdir(path)
 filelist = sorted(filelist,key=str.lower)
 
-subjectList = [filelist[x].split('_') for x in range(0,66960)]
-sessionList = [subjectList[x][2].split('.') for x in range(0,66960)]
-subjectList = [subjectList[x][0] for x in range(0,66960,720)]
-sessionList = [sessionList[x][0] for x in range(0,2)]
+all_files = [x.split('_')[0] for x in filelist]
+raw_sess_list = [x.split('_')[2].replace('.mat', '') for x in filelist]
+subjectList = sorted(list(set(all_files))) #get unique values in subj codes, in list form
+sessionList = sorted(list(set(raw_sess_list))) #get unique session labels
 
-badSubjects = list(['104012','125525','151526','182840','200109','500222'])
+badSubjects = ['104012', '125525', '151526', '182840', '200109', '500222']
 
 for subject in badSubjects:
     if subject in subjectList: subjectList.remove(subject)

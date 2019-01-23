@@ -13,9 +13,10 @@ from openpyxl import load_workbook
 
 class proj_data():
     def __init__(self):
-        os.chdir(_get_proj_dir()+'/data')
+        server = _get_proj_dir()+'/data'
+#        os.chdir(_get_proj_dir()+'/data')
         
-        wb = load_workbook(filename='GlasserROIs.xlsx')
+        wb = load_workbook(filename=os.path.join(server, 'GlasserROIs.xlsx'))
         ws = wb['Sheet1']
         
         labels = [str(ws['A'+str(x)].value) for x in range(1,361)]
@@ -26,7 +27,7 @@ class proj_data():
             labels[x] = labels[x] + '_R'
     
         self.roiLabels = labels        
-        self.database = h5.File('multimodal_HCP.hdf5','r')
+        self.database = h5.File(os.path.join(server,'multimodal_HCP.hdf5'), 'r+')
 
     def get_data(self):
         proj_data={}
