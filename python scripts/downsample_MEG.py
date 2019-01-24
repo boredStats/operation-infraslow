@@ -8,6 +8,8 @@ import sys
 sys.path.append("..")
 
 import os
+import time
+import datetime
 import proj_utils as pu
 from scipy import signal
 
@@ -29,7 +31,8 @@ sess_list = sorted(list(set([f.split('_')[-1].replace('.mat', '') for f in filel
 meg_original_timepoints = 745619
 meg_downsampled_timepoints = 146592
 meg_original_sampling_rate = 2034.51 
-meg_downsampled_sampling_rate = meg_downsampled_timepoints / meg_original_timepoints * meg_original_sampling_rate
+#meg_downsampled_sampling_rate = meg_downsampled_timepoints / meg_original_timepoints * meg_original_sampling_rate
+meg_downsampled_sampling_rate = 500 #from Hye
 
 rsfmri_sampling_rate = 1/.72
 rsfmri_timepoints = 1200
@@ -46,10 +49,12 @@ meg_rois = pu.read_database(meg_dset, roi_labels)
 meg_resampled_timeseries = signal.resample(meg_rois.values, int(meg_con))
 
 #Resample MEG data, append to hdf5 file
+subject_timepoints_list = []
 for sess in sess_list:
     for subj in subj_list:
         dset_to_load = database['/' + subj + '/MEG/' + sess + '/timeseries']
         meg_data = pu.read_database(dset_to_load, roi_labels)
+        subject_timepoints_list.append(meg_data.values.shape)
         
         meg_data_resampled = signal.resample(meg_data.values, int(meg_con))
         
@@ -58,3 +63,8 @@ for sess in sess_list:
         dset = grp.create_dataset('resampled',
                                   data=meg_data_resampled,
                                   chunks=True, compression='gzip')
+        
+        st = datetime.datetime.fromtimestamp(time.time())
+        print('Subject ' + subj + ' complete at ' + str(st))
+    st = datetime.datetime.fromtimestamp(time.time())
+    print('Session ' + sess + ' complete at: ' + str(st))
