@@ -6,6 +6,8 @@ Created on Fri Nov  9 10:27:53 2018
 """
 
 import os
+import time
+import datetime
 import numpy as np
 import pandas as pd
 import h5py as h5
@@ -60,6 +62,10 @@ def read_database(dset,labels):
         df = pd.DataFrame(data=temp,columns=labels)
         
         return df
+    
+def ctime():
+    ts = time.time()
+    return datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
 def _get_proj_dir_dep():
     #Note: Depcrecated, server path is now hard coded into proj_utils

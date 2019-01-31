@@ -96,7 +96,7 @@ for session in sessionList:
         st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
             
         print('Subject '+subject+' complete at '+st)
-        
+        break
     ts = time.time()
     st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
     
