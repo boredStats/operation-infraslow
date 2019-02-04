@@ -54,8 +54,8 @@ meg_sess = list(set([f.split('_')[-1].replace('.mat', '') for f in files]))
 meg_sess = sorted(meg_sess)
 
 fs = 500 #Sampling rate
-low_pass_cutoff = 100 #lowpass cutoff
-window = 10*fs #window length for 0.1 Hz bin
+lowpass = 100 #lowpass cutoff
+w = 10*fs #window length for 0.1 Hz bin
 
 print('%s: Single subject test' % pu.ctime())
 subj = meg_subj[0]
@@ -66,7 +66,7 @@ dset = database['/'+ subj +'/MEG/'+ sess +'/timeseries']
 meg_data = pu.read_database(dset, rois)
 timeseries = meg_data[roi]
 
-f, _, amp_wins = spectrogram(timeseries, fs, nperseg=window, mode='magnitude')
+f, _, amp_wins = spectrogram(timeseries, fs, nperseg=w, mode='magnitude')
 amp = np.mean(amp_wins, 1)
 
 print('%s: Starting' % pu.ctime())
@@ -85,11 +85,11 @@ for sess in meg_sess:
         amp_list, phase_list, freqs_list = [], [], []
         for roi in rois:
             timeseries = meg_data[roi]
-            amp, phase, freqs = freq_analysis(timeseries, fs)
+            a, p, f = freq_analysis_sliding_window(timeseries, fs, w)
             
-            amp_list.append(amp)
-            phase_list.append(phase)
-            freqs_list.append(freqs)
+            amp_list.append(a)
+            phase_list.append(p)
+            freqs_list.append(f)
  
         grp = out_file.require_group('/full_range/' + subj + '/' + sess)
         grp.create_dataset('amplitude_data', data=np.asarray(amp_list).T)
@@ -99,19 +99,19 @@ for sess in meg_sess:
         amp_list, phase_list, freqs_list = [], [], []
         for roi in rois:
             timeseries = meg_data[roi]
-            filtered = butter_filter(timeseries, fs, low_pass_cutoff)
-            amp, phase, freqs = freq_analysis(filtered, low_pass_cutoff)
+            filtered = butter_filter(timeseries, fs, lowpass)
+            a, p, f = freq_analysis_sliding_window(filtered, lowpass, w)
             
-            amp_list.append(amp)
-            phase_list.append(phase)
-            freqs_list.append(freqs)
+            amp_list.append(a)
+            phase_list.append(p)
+            freqs_list.append(f)
 
-        lowpass_gname = '/low_pass_%dHz/' % low_pass_cutoff
+        lowpass_gname = '/low_pass_%dHz/' % lowpass
         grp = out_file.require_group(lowpass_gname + subj + '/' + sess)
         grp.create_dataset('amplitude_data', data=np.asarray(amp_list).T)
         grp.create_dataset('phase_data', data=np.asarray(phase_list).T)
         grp.create_dataset('frequencies', data= np.asarray(freqs_list).T)
 
         out_file.close()
-        
+    break #Single session
 print('%s: Finished' % pu.ctime())
