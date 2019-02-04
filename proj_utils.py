@@ -62,6 +62,27 @@ def read_database(dset,labels):
         df = pd.DataFrame(data=temp,columns=labels)
         
         return df
+
+def super_corr(x, y):
+    """
+    Correlating massive matrices (can have uneven number of columns)
+    Adapted for this project, without memory checks
+    If the matrices are too big, expect RAM troubles
+    """
+    def center_matrix(a):
+        mu_a = a.mean(0)
+        mean_mat = np.reshape(np.repeat(mu_a, a.shape[0]), a.shape, order="F")
+        return np.subtract(a, mean_mat)
+        
+    s = x.shape[0]    
+    if s != y.shape[0]:
+        raise ValueError ("x and y must have the same number of observations")
+    
+    std_x = x.std(0, ddof=s - 1)
+    std_y = y.std(0, ddof=s - 1)
+    
+    cov = np.dot(center_matrix(x).T,center_matrix(y))
+    return cov/np.dot(std_x[:, np.newaxis], std_y[np.newaxis, :])
     
 def ctime():
     ts = time.time()

@@ -8,7 +8,7 @@ Created on Wed Jan 30 09:52:15 2019
 import os
 import h5py
 import numpy as np
-from scipy.signal import butter, sosfilt
+from scipy.signal import butter, sosfilt, spectrogram
 
 import sys
 sys.path.append("..")
@@ -26,13 +26,20 @@ def freq_analysis(timeseries, sampling_rate):
     freqs = np.fft.rfftfreq(len(timeseries), 1.0/sampling_rate)
     return amp, phase, freqs
 
+def freq_analysis_sliding_window(ts, fs, win_len):
+    _, _, amp_wins = spectrogram(ts, fs, nperseg=win_len, mode='magnitude')
+    freqs , _, phase_wins = spectrogram(ts, fs, nperseg=win_len, mode='angle')
+    amp = np.mean(amp_wins, axis=1)
+    phase = np.mean(phase_wins, axis=1)
+    return amp, phase, freqs
+    
 pdir = pu._get_proj_dir()
 pdObj = pu.proj_data()
 pData = pdObj.get_data()
 rois = pData['roiLabels']
 database = pData['database']
 
-meg_subj_path = pdir+'/data/timeseries_MEG'
+meg_subj_path = pdir + '/data/timeseries_MEG'
 files = sorted(os.listdir(meg_subj_path), key=str.lower)
 
 meg_subj = list(set([f.split('_')[0] for f in files]))
@@ -48,6 +55,19 @@ meg_sess = sorted(meg_sess)
 
 fs = 500 #Sampling rate
 low_pass_cutoff = 100 #lowpass cutoff
+window = 10*fs #window length for 0.1 Hz bin
+
+print('%s: Single subject test' % pu.ctime())
+subj = meg_subj[0]
+sess = meg_sess[0]
+roi = rois[0]
+
+dset = database['/'+ subj +'/MEG/'+ sess +'/timeseries']
+meg_data = pu.read_database(dset, rois)
+timeseries = meg_data[roi]
+
+f, _, amp_wins = spectrogram(timeseries, fs, nperseg=window, mode='magnitude')
+amp = np.mean(amp_wins, 1)
 
 print('%s: Starting' % pu.ctime())
 for sess in meg_sess:
