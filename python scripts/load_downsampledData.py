@@ -49,15 +49,3 @@ badSubjects = ['104012', '125525', '151526', '182840', '200109', '500222']
 for subject in badSubjects:
     if subject in subj_MRI:
         subj_MRI.remove(subject)
-        
-#Loading single subject
-dset = database['/' + subj_MRI[0] + '/rsfMRI/' + sess_MRI[0] + '/timeseries']
-fmri_data = pu.read_database(dset, rois)
-
-meg_downsamp = h5.File(os.path.join(pdir, 'data/resampled_MEG_data.hdf5'))
-dset = meg_downsamp['/' + subj_MEG[0] + '/MEG/' + sess_MEG[0] + '/resampled']
-meg_data = pu.read_database(dset, rois)
-
-#Params
-fs = 1/.72
-max_f = 1/.72/2
