@@ -24,7 +24,7 @@ def butter_filter(timeseries, fs, cutoffs, order=4):
     sos = butter(order, butter_cut, output='sos', btype='band')
     return sosfilt(sos, timeseries)
 
-def calcPAC(data, fs, phase_band=None, amp_band=None):
+def get_phase_amp_data(data, fs, phase_band=None, amp_band=None):
     phase_banded = butter_filter(data, fs, phase_band)
     phase_hilbert = hilbert(phase_banded)
     phase_data = np.angle(phase_hilbert)
