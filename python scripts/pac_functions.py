@@ -102,6 +102,6 @@ if __name__ == "__main__":
     meg_data = pu.read_database(dset, rois)
     timeseries = meg_data[roi]
 
-    phase_data, amp_data = calcPAC(timeseries, fs)
+    phase_data, amp_data = get_phase_amp_data(timeseries, fs)
     plot_raw_phase_amp(timeseries, phase_data, amp_data, fs)
     res = circCorr(phase_data, amp_data)

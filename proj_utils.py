@@ -31,11 +31,23 @@ class proj_data():
     
         self.roiLabels = labels        
         self.database = h5.File(os.path.join(server,'multimodal_HCP.hdf5'), 'r+')
-
+        
+        self.bands = {'BOLD': (.0005, 1/.72/2), #Bandpass range for HCP rs-fMRI
+             'Slow 4': (.02, .06),
+             'Slow 3': (.06, .2),
+             'Slow 2': (.2, .5),
+             'Slow 1': (.5, 1.5),
+             'Delta': (1.5, 4),
+             'Theta': (4, 8),
+             'Alpha': (8, 12),
+             'Beta': (12, 30),
+             'Gamma': (30, 55)}
+        
     def get_data(self):
         proj_data={}
         proj_data['roiLabels'] = self.roiLabels
         proj_data['database'] = self.database
+        proj_data['bands'] = self.bands
         
         return proj_data
     
