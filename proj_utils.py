@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import h5py as h5
 from openpyxl import load_workbook
+from scipy.signal import butter, sosfilt
 
 class proj_data():
     def __init__(self):
@@ -84,6 +85,13 @@ def super_corr(x, y):
     cov = np.dot(center_matrix(x).T,center_matrix(y))
     return cov/np.dot(std_x[:, np.newaxis], std_y[np.newaxis, :])
     
+def butter_filter(timeseries, fs, cutoffs, order=4):
+    #Scipy v1.2.0
+    nyquist = fs/2
+    butter_cut = np.divide(cutoffs, nyquist) #butterworth filter param (digital)
+    sos = butter(order, butter_cut, output='sos', btype='band')
+    return sosfilt(sos, timeseries)
+
 def ctime():
     ts = time.time()
     return datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
