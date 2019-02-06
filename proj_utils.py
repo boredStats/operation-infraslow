@@ -29,19 +29,20 @@ class proj_data():
         for x in range(180,360):
             labels[x] = labels[x] + '_R'
     
-        self.roiLabels = labels        
-        self.database = h5.File(os.path.join(server,'multimodal_HCP.hdf5'), 'r+')
+        self.roiLabels = labels
+        database_file = os.path.join(server,'multimodal_HCP.hdf5')
+        self.database = h5.File(database_file, 'r+')
         
         self.bands = {'BOLD': (.0005, 1/.72/2), #Bandpass range for HCP rs-fMRI
-             'Slow 4': (.02, .06),
-             'Slow 3': (.06, .2),
-             'Slow 2': (.2, .5),
-             'Slow 1': (.5, 1.5),
-             'Delta': (1.5, 4),
-             'Theta': (4, 8),
-             'Alpha': (8, 12),
-             'Beta': (12, 30),
-             'Gamma': (30, 55)}
+                      'Slow 4': (.02, .06),
+                      'Slow 3': (.06, .2),
+                      'Slow 2': (.2, .5),
+                      'Slow 1': (.5, 1.5),
+                      'Delta': (1.5, 4),
+                      'Theta': (4, 8),
+                      'Alpha': (8, 12),
+                      'Beta': (12, 30),
+                      'Gamma': (30, 55)}
         
     def get_data(self):
         proj_data={}
@@ -67,6 +68,22 @@ class proj_data():
         meg_sess = sorted(list(uni_sess))
         
         return meg_subj, meg_sess
+    
+    @staticmethod
+    def get_mri_metadata(bad_mri_subj=['104012', '125525', '151526', '182840', '200109', '500222']):
+        pdir = _get_proj_dir()
+        path = pdir+'/data/timeseries_rs-fMRI'
+        filelist = os.listdir(path)
+        filelist = sorted(filelist,key=str.lower)
+        
+        subj_MRI = sorted(list(set([f.split('_')[0] for f in filelist])))
+        sess_MRI = sorted(list(set([f.split('_')[-1].replace('.mat', '') for f in filelist])))
+
+        for subject in bad_mri_subj:
+            if subject in subj_MRI:
+                subj_MRI.remove(subject)
+        
+        return subj_MRI, sess_MRI
             
 def _get_proj_dir():
     #line 1: server path to parent directory
@@ -116,8 +133,8 @@ def super_corr(x, y):
     
 def butter_filter(timeseries, fs, cutoffs, order=4):
     #Scipy v1.2.0
-    nyquist = fs/2
-    butter_cut = np.divide(cutoffs, nyquist) #butterworth filter param (digital)
+    nyq = fs/2
+    butter_cut = np.divide(cutoffs, nyq) #butterworth filter param (digital)
     sos = butter(order, butter_cut, output='sos', btype='band')
     return sosfilt(sos, timeseries)
 
@@ -127,6 +144,7 @@ def ctime():
 
 def _get_proj_dir_dep():
     #Note: Depcrecated, server path is now hard coded into proj_utils
+    #This version only workers on scripts that are on the server
     pdir = os.path.abspath(os.getcwd())
     target = "this_is_proj_dir.txt"
     while not [t for t in os.listdir(pdir) if target in t]:
