@@ -39,6 +39,23 @@ class proj_data():
         
         return proj_data
     
+    @staticmethod
+    def get_meg_metadata(bad_meg_subj=['169040', '662551']):
+        #turning this into a  function so I don't have to keep copy-pasting
+        pdir = _get_proj_dir()
+        meg_subj_path = pdir + '/data/timeseries_MEG'
+        files = sorted(os.listdir(meg_subj_path), key=str.lower)
+        
+        meg_subj = sorted(list(set([f.split('_')[0] for f in files])))
+        for bad in bad_meg_subj:
+            if bad in meg_subj:
+                meg_subj.remove(bad)
+                
+        uni_sess = set([f.split('_')[-1].replace('.mat', '') for f in files])
+        meg_sess = sorted(list(uni_sess))
+        
+        return meg_subj, meg_sess
+            
 def _get_proj_dir():
     #line 1: server path to parent directory
     #line 2: name of the project folder on server
