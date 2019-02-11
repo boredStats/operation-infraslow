@@ -93,22 +93,22 @@ def _get_proj_dir():
     return server_path + project_folder
 
 def read_database(dset,labels):
-        """
-        Read data from HDF5 file into a pandas.DataFrame object and include
-        ROI labels
-        
-        read_data() assumes an HDF5 structured as follows...
-            subject = HCP 6-digit subject code (e.g. 100307)
-                mode = MEG or rsfMRI
-                    session = Session1/2/3 (MEG) or LR/RL (rsfMRI)
-                        dset = defaults to 'timeseries'
-        """
-        temp = np.zeros(dset.shape)
-        dset.read_direct(temp)
-        
-        df = pd.DataFrame(data=temp,columns=labels)
-        
-        return df
+    """
+    Read data from HDF5 file into a pandas.DataFrame object and include
+    ROI labels
+    
+    read_data() assumes an HDF5 structured as follows...
+        subject = HCP 6-digit subject code (e.g. 100307)
+            mode = MEG or rsfMRI
+                session = Session1/2/3 (MEG) or LR/RL (rsfMRI)
+                    dset = defaults to 'timeseries'
+    """
+    temp = np.zeros(dset.shape)
+    dset.read_direct(temp)
+    
+    df = pd.DataFrame(data=temp,columns=labels)
+    
+    return df
 
 def super_corr(x, y):
     """
