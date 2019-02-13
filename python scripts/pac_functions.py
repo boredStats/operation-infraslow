@@ -16,12 +16,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import butter, hilbert, sosfilt
 
-def butter_filter(timeseries, fs, cutoffs, order=4):
+def butter_filter(timeseries, fs, cutoffs, btype='band', order=4):
     #Scipy v1.2.0
     #Note - copied to proj_utils
     nyquist = fs/2
-    butter_cut = np.divide(cutoffs, nyquist) #butterworth filter param (digital)
-    sos = butter(order, butter_cut, output='sos', btype='band')
+    butter_cut = np.divide(cutoffs, nyquist) #butterworth param (digital)
+    sos = butter(order, butter_cut, output='sos', btype=btype)
     return sosfilt(sos, timeseries)
 
 def get_phase_amp_data(data, fs, phase_band=None, amp_band=None):
