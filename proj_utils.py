@@ -17,8 +17,7 @@ from scipy.signal import butter, sosfilt
 class proj_data():
     def __init__(self):
         server = _get_proj_dir()+'/data'
-#        os.chdir(_get_proj_dir()+'/data')
-        
+
         wb = load_workbook(filename=os.path.join(server, 'GlasserROIs.xlsx'))
         ws = wb['Sheet1']
         
@@ -70,27 +69,28 @@ class proj_data():
         return meg_subj, meg_sess
     
     @staticmethod
-    def get_mri_metadata(bad_mri_subj=['104012', '125525', '151526', '182840', '200109', '500222']):
+    def get_mri_metadata(bad_mri_subj=['104012', '125525',
+                                       '151526', '182840',
+                                       '200109', '500222']):
         pdir = _get_proj_dir()
-        path = pdir+'/data/timeseries_rs-fMRI'
-        filelist = os.listdir(path)
-        filelist = sorted(filelist,key=str.lower)
+        path = pdir + '/data/timeseries_rs-fMRI'
+        files = os.listdir(path)
         
-        subj_MRI = sorted(list(set([f.split('_')[0] for f in filelist])))
-        sess_MRI = sorted(list(set([f.split('_')[-1].replace('.mat', '') for f in filelist])))
-
+        mri_subj = sorted(list(set([f.split('_')[0] for f in files])))
         for subject in bad_mri_subj:
-            if subject in subj_MRI:
-                subj_MRI.remove(subject)
+            if subject in mri_subj:
+                mri_subj.remove(subject)
+                
+        uni_sess = sorted(list(set([f.split('_')[-1] for f in files])))
+        mri_sess = [s.replace('.mat', '') for s in uni_sess]
         
-        return subj_MRI, sess_MRI
+        return mri_subj, mri_sess
             
 def _get_proj_dir():
-    #line 1: server path to parent directory
-    #line 2: name of the project folder on server
-    server_path = r"\\utdfs01\UTD\Dept\BBSResearch\LabCLINT\Projects\1Ongoing\Data analysis_Non UTD"
+    nas_path = r"\\utdfs01\UTD\Dept\BBSResearch\LabCLINT" #restricted
+    server_path = r"\Projects\1Ongoing\Data analysis_Non UTD"
     project_folder = r"\[201801] Three Modalities in One_Jeff"
-    return server_path + project_folder
+    return nas_path + server_path + project_folder
 
 def read_database(dset,labels):
     """
@@ -131,11 +131,11 @@ def super_corr(x, y):
     cov = np.dot(center_matrix(x).T,center_matrix(y))
     return cov/np.dot(std_x[:, np.newaxis], std_y[np.newaxis, :])
     
-def butter_filter(timeseries, fs, cutoffs, order=4):
+def butter_filter(timeseries, fs, cutoffs, btype='band', order=4):
     #Scipy v1.2.0
-    nyq = fs/2
-    butter_cut = np.divide(cutoffs, nyq) #butterworth filter param (digital)
-    sos = butter(order, butter_cut, output='sos', btype='band')
+    nyquist = fs/2
+    butter_cut = np.divide(cutoffs, nyquist) #butterworth param (digital)
+    sos = butter(order, butter_cut, output='sos', btype=btype)
     return sosfilt(sos, timeseries)
 
 def ctime():
