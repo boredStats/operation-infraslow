@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 """
+Get phase, amplitude data for the different frequency bands
+Run CFC with circular correlation
+
 Created on Wed Feb  6 09:54:17 2019
 """
 import h5py
@@ -23,7 +26,7 @@ band_dict = pData['bands']
 meg_subj, meg_sess = pdObj.get_meg_metadata()
 fs = 500
 
-#Custom functions for this script
+#Functionized analyses
 def _extract_phase_amp(meg_subj, meg_sess, database, rois, fs, band_dict):
     
     def build_output(ts_data, fs, rois, band):
@@ -77,19 +80,15 @@ def _corr_bands(dataset, roi_index, slow_bands, reg_bands):
             stderr_mat[slow_index, reg_index] = se
     
     return r_mat, p_mat, r2_mat, stderr_mat
-   
-c1 = input("Calculate phase/amp data again? (y/n) ")
-if c1 == 'y':
-    _extract_phase_amp(meg_subj, meg_sess, database, rois, fs, band_dict)
-    print('%s: Finished extracting phase/amplitude data' % pu.ctime())
+
+#_extract_phase_amp(meg_subj, meg_sess, database, rois, fs, band_dict)
+#print('%s: Finished extracting phase/amplitude data' % pu.ctime())
 
 print('%s: Running phase-amplitdue coupling' % pu.ctime())
-data_path = pdir + '/data/MEG_phase_amp_data.hdf5' #TO-DO: CHANGE FILENAME
-#slow_bands = ['BOLD', 'Slow 4', 'Slow 3', 'Slow 2', 'Slow 1']
-#reg_bands = ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma']
+data_path = pdir + '/data/MEG_phase_amp_data.hdf5'
+slow_bands = ['BOLD', 'Slow 4', 'Slow 3', 'Slow 2', 'Slow 1']
+reg_bands = ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma']
 
-slow_bands = ['BOLD']
-reg_bands = ['Gamma']
 for subj in meg_subj:
     for sess in meg_sess:
         phase_amp_file = h5py.File(data_path, 'r')
