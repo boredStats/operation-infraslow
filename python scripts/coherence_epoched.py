@@ -17,6 +17,7 @@ from scipy import signal
 import h5py as h5
 import numpy as np
 import pandas as pd
+import pac_functions as pac
 
 import matplotlib.pyplot as plt
 from scipy.signal import coherence
@@ -30,6 +31,9 @@ pdObj = pu.proj_data()
 pData = pdObj.get_data()
 database = pData['database']
 rois = pData['roiLabels']
+
+subj_MEG, sess_MEG = pdObj.get_meg_metadata()
+subj_MRI, sess_MRI = pdObj.get_mri_metadata()
 
 #Loading single subject
 dset = database['/' + subj_MRI[0] + '/rsfMRI/' + sess_MRI[0] + '/timeseries']
@@ -72,12 +76,14 @@ for s, subj in enumerate(subject_overlap):
     coherence_roi_mat = np.ndarray(shape=[len(f_to_plot), len(rois)])
     for r, roi in enumerate(rois):
         ts_1 = meg_data[roi].values
+        ts_1_filt = pac.butter_filter(ts_1, fs, max_f, 'lowpass')
         ts_2 = fmri_data[roi].values
+        ts_2_filt = pac.butter_filter(ts_2, fs, max_f, 'lowpass')
         
         offset = 600
         
 #        freqs, coh = coherence(ts_1, ts_2[0+offset:407+offset], fs=fs)
-        freqs, coh = coherence(ts_1[0:407], ts_2[0+offset:407+offset], fs=fs)
+        freqs, coh = coherence(ts_1_filt[0:407], ts_2_filt[0+offset:407+offset], fs=fs)
         coherence_roi_mat[:, r] = coh[:len(f_to_plot)]
     coh_full[:, :, s] = coherence_roi_mat
     
