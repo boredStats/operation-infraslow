@@ -59,11 +59,11 @@ def circCorr(ang,line):
     rcs = sp.stats.pearsonr(np.sin(ang),np.cos(ang))
     rcs = rcs[0]
     rho = np.sqrt((rxc**2 + rxs**2 - 2*rxc*rxs*rcs)/(1-rcs**2)) #r
-    r_2 = rho**2 #r squared
+    #r_2 = rho**2 #r squared
     pval = 1- sp.stats.chi2.cdf(n*(rho**2),1)
-    standard_error = np.sqrt((1-r_2)/(n-2))
+    #standard_error = np.sqrt((1-r_2)/(n-2))
 
-    return rho, pval, r_2,standard_error
+    return rho, pval#, r_2,standard_error
 
 if __name__ == "__main__":
     import os
