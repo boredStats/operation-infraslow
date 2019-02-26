@@ -13,19 +13,6 @@ import sys
 sys.path.append("..")
 import proj_utils as pu
 
-print('%s: Starting' % pu.ctime())   
-     
-print('%s: Getting metadata, parameters' % pu.ctime())
-pdir = pu._get_proj_dir()
-pdObj = pu.proj_data()
-
-pData = pdObj.get_data()
-rois = pData['roiLabels']
-database = pData['database']
-band_dict = pData['bands']
-meg_subj, meg_sess = pdObj.get_meg_metadata()
-fs = 500
-
 #Functionized analyses
 def _extract_phase_amp(meg_subj, meg_sess, database, rois, fs, band_dict):
     
@@ -43,7 +30,7 @@ def _extract_phase_amp(meg_subj, meg_sess, database, rois, fs, band_dict):
         return phase_mat, amp_mat
     
     print('%s: Extracting phase/amp data' % pu.ctime())
-    phase_amp_file = pdir + '/data/MEG_phase_amp_data.hdf5' #TO-DO: CHANGE FILENAME
+    phase_amp_file = pdir + '/data/MEG_phase_amp_data.hdf5'
     for sess in meg_sess:
         for subj in meg_subj:
             for b in band_dict:
@@ -58,54 +45,60 @@ def _extract_phase_amp(meg_subj, meg_sess, database, rois, fs, band_dict):
                 grp = out_file.require_group('/' + subj + '/' + sess + '/' + b)
                 grp.create_dataset('phase_data', data=phase_mat)
                 grp.create_dataset('amplitude_data', data=amp_mat)
-                out_file.close()          
+                out_file.close()      
 
-def _corr_bands(dataset, roi_index, slow_bands, reg_bands):
-    r_mat = np.ndarray(shape=[len(slow_bands), len(reg_bands)])
-    p_mat = np.ndarray(shape=[len(slow_bands), len(reg_bands)])
-    r2_mat = np.ndarray(shape=[len(slow_bands), len(reg_bands)])
-    stderr_mat = np.ndarray(shape=[len(slow_bands), len(reg_bands)])
-    
-    for slow_index, slow in enumerate(slow_bands):
-        slow_group = dataset.get(slow)
-        slow_ts = slow_group.get('phase_data')[:, roi_index]
-        for reg_index, reg in enumerate(reg_bands):
-            reg_group = dataset.get(reg)
-            reg_ts = reg_group.get('amplitude_data')[:, roi_index]
-            
-            r_val, p_val, r2, se = pac.circCorr(slow_ts, reg_ts)
-            r_mat[slow_index, reg_index] = r_val
-            p_mat[slow_index, reg_index] = p_val
-            r2_mat[slow_index, reg_index] = r2
-            stderr_mat[slow_index, reg_index] = se
-    
-    return r_mat, p_mat, r2_mat, stderr_mat
+print('%s: Starting' % pu.ctime())   
+     
+print('%s: Getting metadata, parameters' % pu.ctime())
+pdir = pu._get_proj_dir()
+pdObj = pu.proj_data()
+
+pData = pdObj.get_data()
+rois = pData['roiLabels']
+database = pData['database']
+band_dict = pData['bands']
+meg_subj, meg_sess = pdObj.get_meg_metadata()
+fs = 500
 
 #_extract_phase_amp(meg_subj, meg_sess, database, rois, fs, band_dict)
 #print('%s: Finished extracting phase/amplitude data' % pu.ctime())
 
 print('%s: Running phase-amplitdue coupling' % pu.ctime())
 data_path = pdir + '/data/MEG_phase_amp_data.hdf5'
+out_path = pdir + 'MEG_pac_first_level_slow_with_supra_not_early.hdf5'
+#out_path = pdir + '/data/MEG_pac_first_level_supra_only.hdf5'
+
 slow_bands = ['BOLD', 'Slow 4', 'Slow 3', 'Slow 2', 'Slow 1']
 reg_bands = ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma']
 
-for subj in meg_subj:
-    for sess in meg_sess:
+band1 = slow_bands
+band2 = reg_bands
+
+for sess in meg_sess:
+    for subj in meg_subj:
         phase_amp_file = h5py.File(data_path, 'r')
-        subj_data = phase_amp_file.require_group('/' + subj + '/' + sess)
+        subj_data = phase_amp_file.require_group(subj + '/' + sess)
+        
         for r, roi in enumerate(rois):
             print('%s: %s %s %s' % (pu.ctime(), sess, str(subj), roi))
-            cfc_file = h5py.File(pdir + '/data/MEG_pac_first_level.hdf5')
-            current_group = '/' + subj + '/' + sess + '/' + roi + '/'
-            out_group = cfc_file.require_group(current_group)
+            r_mat = np.ndarray(shape=[len(band1), len(band2)])
+            p_mat = np.ndarray(shape=[len(band1), len(band2)])
             
-            rs, ps, r2s, ses = _corr_bands(subj_data, r, slow_bands, reg_bands)
+            for slow_index, slow in enumerate(band1):
+                slow_group = subj_data.get(slow)
+                slow_ts = slow_group.get('phase_data')[:, r]
+                for reg_index, reg in enumerate(band2):
+                    reg_group = subj_data.get(reg)
+                    reg_ts = reg_group.get('amplitude_data')[:, r]
+                    
+                    r_val, p_val = pac.circCorr(slow_ts, reg_ts)
+                    r_mat[slow_index, reg_index] = r_val
+                    p_mat[slow_index, reg_index] = p_val
             
-            out_group.create_dataset('r_vals', data=rs)
-            out_group.create_dataset('p_vals', data=ps)
-            out_group.create_dataset('r2_vals', data=r2s)
-            out_group.create_dataset('std_err_vals', data=ses)
-            
+            cfc_file = h5py.File(out_path)
+            out_group = cfc_file.require_group(sess + '/' + subj + '/' + roi)
+            out_group.create_dataset('r_vals', data=r_mat)
+            out_group.create_dataset('p_vals', data=p_mat)
             cfc_file.close()
             
         phase_amp_file.close()
