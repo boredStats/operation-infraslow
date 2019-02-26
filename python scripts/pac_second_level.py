@@ -1,5 +1,20 @@
 # -*- coding: utf-8 -*-
 """
+Code for making violin plots
+
+Functions in this script are for data transformation only
+Seaborn catplot requires SPSS-like dataframe structure... sigh...
+
+TO-DO: 
+    Change list-to-numpy array extraction to pure numpy array based coding
+    for readabilty and third-party comprehension
+
+    Change extract_meg_pac function
+        Eventually, remove the early flag
+        Early analysis placed subject index at the top of the hdf5 hierarchy
+        Subsequent analyses have scan session as the top level of the hierarchy
+        When early analysis is re-done, remove this flag
+        
 Created on Mon Feb 11 09:01:21 2019
 """
 
