@@ -55,7 +55,7 @@ def extract_mri_pac(subj_list, sess_combo, bands, hdf5_path, out_path=None):
             rval_list.append(rvals)
             
         subj_rvals = np.asarray(rval_list).T
-#        break
+
         within_subj_mri_meg = subj_rvals[:, 5:] #Getting supraband correlations
         
         between_subj_mri_meg_list.append(within_subj_mri_meg)
@@ -66,7 +66,6 @@ def extract_mri_pac(subj_list, sess_combo, bands, hdf5_path, out_path=None):
             pkl.dump(between_subj_mri_meg, out_file)
             
     return between_subj_mri_meg
-#    return subj_rvals
 
 def build_violin_dataframe(between_subj_data, rois, row_bands, col_bands):
     mean_roi_data = np.mean(between_subj_data, axis=0)
@@ -148,12 +147,12 @@ print('%s: Plotting data' % pu.ctime())
 #fig.set(ylim=(.001, .1))
 
     
-data_path = pdir + '/data/MEG_pac_first_level_with_MRI_.hdf5'
-sess_combo = mri_sess[0] + '_' + meg_sess[1]
+data_path = pdir + '/data/MEG_pac_first_level_with_MRI.hdf5'
+sess_combo = mri_sess[0] + '_' + meg_sess[0]
 out_path = pdir + '/data/violin_meg_mri_data_%s.pkl' % sess_combo
 test2_data = extract_mri_pac(subj_overlap, sess_combo, list(band_dict), data_path, out_path)
-with open(out_path, 'rb') as file:
-    test2_data = pkl.load(file)
+#with open(out_path, 'rb') as file:
+#    test2_data = pkl.load(file)
 
 combined_data_shape = [len(subj_overlap), len(rois), 6, 5]
 combined_between_subj_data = np.ndarray(shape=combined_data_shape)
