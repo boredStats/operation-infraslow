@@ -45,8 +45,7 @@ def build_output(subj_data, rois, mri_check=False, band=None, fs=None):
     return phase_mat, amp_mat
 
 def cir_corr(mri_dataset, meg_dataset, roi_index, mri_band, reg_bands):
-    #Modified corr_bands function from pac_first_level
-    #Takes in two datasets, as well as lim (to truncate MRI signal)
+    #Modified corr_bands function from pac_first_level to take in 2 datasets
     
     r_mat = np.ndarray(shape=[len(reg_bands)])
     p_mat = np.ndarray(shape=[len(reg_bands)])
@@ -88,49 +87,49 @@ fs = 1/.72
 band = band_dict['BOLD']
 reg_bands = ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma']
 
-output_path = pdir + '/data/rsfMRI_phase_amp_data.hdf5'
-print('%s: Extracting MRI phase/amp data' % pu.ctime())
-for sess in mri_sess:
-    for subj in mri_subj:
-        print('%s: %s %s' % (pu.ctime(), sess, str(subj)))
-        dset = database['/'+ subj +'/rsfMRI/'+ sess +'/timeseries']
-        mri_data = pu.read_database(dset, rois)
-        upsampled = resample(mri_data.values, num=min_meg_length)
-        upsampled_df = pd.DataFrame(upsampled, columns=rois)
-
-        phase_mat, amp_mat = build_output(upsampled_df, rois, mri_check=True)
-        
-        h5 = h5py.File(output_path)
-        grp = h5.require_group('/' + subj + '/' + sess + '/' + 'BOLD')
-        grp.create_dataset('phase_data', data=phase_mat)
-        grp.create_dataset('amplitude_data', data=amp_mat)
-        h5.close()
-
-meg_fs = 500
-output_path = pdir + '/data/MEG_truncated_phase_amp_data.hdf5'
-print('%s: Extracting MEG resampled phase/amp data' % pu.ctime())
-#list_of_timeseries_lengths = []
-for sess in meg_sess:
-    for subj in meg_subj:
-        for b in band_dict:
-            band = band_dict[b]
-            print('%s: %s %s' % (pu.ctime(), sess, str(subj)))#, b))
-            dset_to_load = database[subj + '/MEG/' + sess + '/timeseries']
-            meg_data = pu.read_database(dset_to_load, rois)
-            ts_length = meg_data.values.shape[0]
-    #        list_of_timeseries_lengths.append(ts_length)
-            
-            meg_trunc = meg_data.values[:min_meg_length, :]
-            meg_data_trunc = pd.DataFrame(meg_trunc, columns=rois)
-            
-            phase_mat, amp_mat = build_output(meg_data_trunc, rois,
-                                              band=band, fs=meg_fs)
-            
-            h5 = h5py.File(output_path)
-            grp = h5.require_group('/' + subj + '/' + sess + '/' + b)
-            grp.create_dataset('phase_data', data=phase_mat)
-            grp.create_dataset('amplitude_data', data=amp_mat)
-            h5.close()
+#output_path = pdir + '/data/rsfMRI_phase_amp_data.hdf5'
+#print('%s: Extracting MRI phase/amp data' % pu.ctime())
+#for sess in mri_sess:
+#    for subj in mri_subj:
+#        print('%s: %s %s' % (pu.ctime(), sess, str(subj)))
+#        dset = database['/'+ subj +'/rsfMRI/'+ sess +'/timeseries']
+#        mri_data = pu.read_database(dset, rois)
+#        upsampled = resample(mri_data.values, num=min_meg_length)
+#        upsampled_df = pd.DataFrame(upsampled, columns=rois)
+#
+#        phase_mat, amp_mat = build_output(upsampled_df, rois, mri_check=True)
+#        
+#        h5 = h5py.File(output_path)
+#        grp = h5.require_group('/' + subj + '/' + sess + '/' + 'BOLD')
+#        grp.create_dataset('phase_data', data=phase_mat)
+#        grp.create_dataset('amplitude_data', data=amp_mat)
+#        h5.close()
+#
+#meg_fs = 500
+#output_path = pdir + '/data/MEG_truncated_phase_amp_data.hdf5'
+#print('%s: Extracting MEG resampled phase/amp data' % pu.ctime())
+##list_of_timeseries_lengths = []
+#for sess in meg_sess:
+#    for subj in meg_subj:
+#        for b in band_dict:
+#            band = band_dict[b]
+#            print('%s: %s %s' % (pu.ctime(), sess, str(subj)))#, b))
+#            dset_to_load = database[subj + '/MEG/' + sess + '/timeseries']
+#            meg_data = pu.read_database(dset_to_load, rois)
+#            ts_length = meg_data.values.shape[0]
+#    #        list_of_timeseries_lengths.append(ts_length)
+#            
+#            meg_trunc = meg_data.values[:min_meg_length, :]
+#            meg_data_trunc = pd.DataFrame(meg_trunc, columns=rois)
+#            
+#            phase_mat, amp_mat = build_output(meg_data_trunc, rois,
+#                                              band=band, fs=meg_fs)
+#            
+#            h5 = h5py.File(output_path)
+#            grp = h5.require_group('/' + subj + '/' + sess + '/' + b)
+#            grp.create_dataset('phase_data', data=phase_mat)
+#            grp.create_dataset('amplitude_data', data=amp_mat)
+#            h5.close()
 
 meg_phase_amp = pdir + '/data/MEG_truncated_phase_amp_data.hdf5'
 mri_phase_amp = pdir + '/data/rsfMRI_phase_amp_data.hdf5'
