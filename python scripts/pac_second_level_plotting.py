@@ -4,16 +4,6 @@ Code for making violin plots
 
 Functions in this script are for data transformation only
 Seaborn catplot requires SPSS-like dataframe structure... sigh...
-
-TO-DO: 
-    Change list-to-numpy array extraction to pure numpy array based coding
-    for readabilty and third-party comprehension
-
-    Change extract_meg_pac function
-        Eventually, remove the early flag
-        Early analysis placed subject index at the top of the hdf5 hierarchy
-        Subsequent analyses have scan session as the top level of the hierarchy
-        When early analysis is re-done, remove this flag
         
 Created on Mon Feb 11 09:01:21 2019
 """
@@ -27,7 +17,7 @@ import sys
 sys.path.append("..")
 import proj_utils as pu
 
-def _extract_meg_pac(subj_list, sess, rois, hdf5_path, early=True):
+def _extract_meg_pac(subj_list, sess, rois, hdf5_path):
     between_subj_data = []
     
     for subj in subj_list:
@@ -35,10 +25,7 @@ def _extract_meg_pac(subj_list, sess, rois, hdf5_path, early=True):
         
         for roi in rois:
             hdf5 = h5py.File(hdf5_path, 'r')
-            if early: #Early analyses had subj and session hierarchy switched
-                rval_path = subj  + '/' + sess + '/' + roi + '/' + 'r_vals'
-            else:
-                rval_path = sess  + '/' + subj + '/' + roi + '/' + 'r_vals'
+            rval_path = sess  + '/' + subj + '/' + roi + '/' + 'r_vals'
             
             dset = hdf5.get(rval_path).value
             within_subj_data.append(dset[:, :])
@@ -131,46 +118,43 @@ slow_bands = ['BOLD', 'Slow 4', 'Slow 3', 'Slow 2', 'Slow 1'] #rows
 reg_bands = ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma'] #cols
 
 #--- Infraslow results ---#
-#sess = meg_sess[1] #Edit MEG session to plot here
-#print('%s: Plotting infraslow results for MEG %s' % (pu.ctime(), sess))
-#data_path = pdir + '/data/MEG_pac_first_level_slow_with_supra.hdf5'
-#meg_infraslow_data = _extract_meg_pac(subj_overlap, sess,
-#                                      rois, data_path)
-#catplot_df = build_violin_dataframe(meg_infraslow_data,
-#                                    rois, slow_bands, reg_bands)
-#_plot_violin(catplot_df)
+sess = meg_sess[1] #Edit MEG session to plot here
+print('%s: Plotting infraslow results for MEG %s' % (pu.ctime(), sess))
+data_path = pdir + '/data/MEG_pac_first_level_slow_with_supra.hdf5'
+meg_infraslow_data = _extract_meg_pac(subj_overlap, sess, rois, data_path)
+catplot_df = _build_violin_dataframe(meg_infraslow_data,
+                                    rois, slow_bands, reg_bands)
+_plot_violin(catplot_df)
 
 #--- Supraband results ---#
-#sess = meg_sess[2] #Edit MEG session to plot here
-#print('%s: Plotting supraband results for MEG %s' % (pu.ctime(), sess))
-#data_path = pdir + '/data/MEG_pac_first_level_supra_only.hdf5'
-#meg_supraband_data = _extract_meg_pac(subj_overlap, sess, rois,
-#                                     data_path, early=False)
-#catplot_df = _build_violin_dataframe(meg_supraband_data, rois,
-#                                     reg_bands, reg_bands)
-#_plot_violin(catplot_df)
+sess = meg_sess[2] #Edit MEG session to plot here
+print('%s: Plotting supraband results for MEG %s' % (pu.ctime(), sess))
+data_path = pdir + '/data/MEG_pac_first_level_supra_only.hdf5'
+supra_data = _extract_meg_pac(subj_overlap, sess, rois, data_path)
+catplot_df = _build_violin_dataframe(supra_data, rois, reg_bands, reg_bands)
+_plot_violin(catplot_df)
 
 #--- fmri + meg scan combo results ---#
-#mri_session = mri_sess[1]
-#meg_session = meg_sess[2]
-#sess_combo = mri_session + '_' + meg_session
-#print('%s: Plotting combo infraslow results %s' % (pu.ctime(), sess_combo))
-#data_path = pdir + '/data/MEG_pac_first_level_with_MRI.hdf5'
-#mri_meg_data = extract_mri_pac(subj_overlap, sess_combo, reg_bands, data_path)
-#data_path = pdir + '/data/MEG_pac_first_level_slow_with_supra.hdf5'
-#meg_data = extract_meg_pac(subj_overlap, meg_session, rois, data_path)
-#
-#slow_bands_with_mri = ['MRI-BOLD'] + slow_bands
-#combined_data_shape = [len(subj_overlap), len(rois),
-#                       len(slow_bands_with_mri), len(reg_bands)]
-#combined_between_subj_data = np.ndarray(shape=combined_data_shape)
-#for subj_index, subj in enumerate(subj_overlap):
-#    for roi_index, roi in enumerate(rois):
-#        meg_with_meg_data = meg_data[subj_index, roi_index, :, :]
-#        mri_with_meg_data = mri_meg_data[subj_index, roi_index, :]
-#        combined_mat = np.vstack((mri_with_meg_data, meg_with_meg_data))
-#        combined_between_subj_data[subj_index, roi_index, :, :] = combined_mat
-#
-#catplot_df = _build_violin_dataframe(combined_between_subj_data,
-#                               rois, reg_bands, slow_bands_with_mri)
-#_plot_violin(catplot_df)
+mri_session = mri_sess[1]
+meg_session = meg_sess[2]
+sess_combo = mri_session + '_' + meg_session
+print('%s: Plotting combo infraslow results %s' % (pu.ctime(), sess_combo))
+data_path = pdir + '/data/MEG_pac_first_level_with_MRI.hdf5'
+mri_meg_data = _extract_mri_pac(subj_overlap, sess_combo, reg_bands, data_path)
+data_path = pdir + '/data/MEG_pac_first_level_slow_with_supra.hdf5'
+meg_data = _extract_meg_pac(subj_overlap, meg_session, rois, data_path)
+
+slow_bands_with_mri = ['MRI-BOLD'] + slow_bands
+combined_data_shape = [len(subj_overlap), len(rois),
+                       len(slow_bands_with_mri), len(reg_bands)]
+combined_between_subj_data = np.ndarray(shape=combined_data_shape)
+for subj_index, subj in enumerate(subj_overlap):
+    for roi_index, roi in enumerate(rois):
+        meg_with_meg_data = meg_data[subj_index, roi_index, :, :]
+        mri_with_meg_data = mri_meg_data[subj_index, roi_index, :]
+        combined_mat = np.vstack((mri_with_meg_data, meg_with_meg_data))
+        combined_between_subj_data[subj_index, roi_index, :, :] = combined_mat
+
+catplot_df = _build_violin_dataframe(combined_between_subj_data,
+                               rois, reg_bands, slow_bands_with_mri)
+_plot_violin(catplot_df)

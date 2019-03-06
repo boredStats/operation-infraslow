@@ -65,7 +65,7 @@ fs = 500
 
 print('%s: Running phase-amplitdue coupling' % pu.ctime())
 data_path = pdir + '/data/MEG_phase_amp_data.hdf5'
-out_path = pdir + 'MEG_pac_first_level_slow_with_supra_not_early.hdf5'
+out_path = pdir + 'MEG_pac_first_level_slow_with_supra.hdf5'
 #out_path = pdir + '/data/MEG_pac_first_level_supra_only.hdf5'
 
 slow_bands = ['BOLD', 'Slow 4', 'Slow 3', 'Slow 2', 'Slow 1']
@@ -81,6 +81,12 @@ for sess in meg_sess:
         
         for r, roi in enumerate(rois):
             print('%s: %s %s %s' % (pu.ctime(), sess, str(subj), roi))
+            cfc_file = h5py.File(out_path)
+            
+            group_path = sess + '/' + subj + '/' + roi
+            if group_path in cfc_file:
+                continue #check if work has already been done
+            
             r_mat = np.ndarray(shape=[len(band1), len(band2)])
             p_mat = np.ndarray(shape=[len(band1), len(band2)])
             
@@ -95,8 +101,7 @@ for sess in meg_sess:
                     r_mat[slow_index, reg_index] = r_val
                     p_mat[slow_index, reg_index] = p_val
             
-            cfc_file = h5py.File(out_path)
-            out_group = cfc_file.require_group(sess + '/' + subj + '/' + roi)
+            out_group = cfc_file.require_group(group_path)
             out_group.create_dataset('r_vals', data=r_mat)
             out_group.create_dataset('p_vals', data=p_mat)
             cfc_file.close()
