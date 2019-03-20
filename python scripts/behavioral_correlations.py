@@ -53,17 +53,14 @@ def fdr_p(pmat):
     _, fdr_p = mt.fdrcorrection(pvect)
     return np.reshape(fdr_p, pmat.shape)
     
-def _extract_meg_pac(subj_list, sess, rois, hdf5_path, early=True):
+def _extract_meg_pac(subj_list, sess, rois, hdf5_path):
     between_subj_data = []
     for subj in subj_list:
         within_subj_data = []
         
         for roi in rois:
             hdf5 = h5py.File(hdf5_path, 'r')
-            if early: #Early analyses had subj and session hierarchy switched
-                rval_path = subj  + '/' + sess + '/' + roi + '/' + 'r_vals'
-            else:
-                rval_path = sess  + '/' + subj + '/' + roi + '/' + 'r_vals'
+            rval_path = sess  + '/' + subj + '/' + roi + '/' + 'r_vals'
             
             dset = hdf5.get(rval_path).value
             within_subj_data.append(dset[:, :])
