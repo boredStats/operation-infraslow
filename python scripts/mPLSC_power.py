@@ -5,7 +5,6 @@ Run multi-table PLS-C using MEG BOLD-passband power data + fMRI data
 Created on Thu Mar 28 12:55:29 2019
 """
 
-import os
 import h5py
 import numpy as np
 import pandas as pd
@@ -35,7 +34,7 @@ def _extract_average_power(hdf5_file, sessions, subjects, image_type):
                 f.close()
             
             if 'MRI' in image_type:
-                h_path = '/' + subj + '/rsfMRI/' + sess + '/timeseries'
+                h_path = subj + '/rsfMRI/' + sess + '/timeseries'
                 data = f.get(h_path).value
                 f.close()
 
@@ -60,26 +59,6 @@ def _create_salience_subtables(sals, dataframes, subtable_names, latent_names):
         start = end
     return salience_subtables
 
-def _load_behavior_subtables(behavior_raw, variable_metadata):
-    #Support function - load y tables
-    names = list(variable_metadata['name'].values)
-    
-    overlap = [b for b in names if b in list(behavior_raw)]
-    to_drop = [b for b, n in enumerate(names) if n not in list(behavior_raw)]
-    
-    
-    variable_metadata.drop(to_drop, inplace=True)
-    categories = list(variable_metadata['category'].values)
-    
-    behavior_data = behavior_raw.loc[:, overlap]
-    
-    subtable_data = {}
-    for c in list(pd.unique(categories)):
-        blist = [beh for b, beh in enumerate(overlap) if categories[b] == c]
-        subtable_data[c] = behavior_data.loc[:, blist]
-        
-    return subtable_data
-
 def _merge_mri_meg(mri_data, meg_data):
     x_meg_tables = [meg_data[t] for t in list(meg_data)]
     x_mri_tables = [mri_data[t] for t in list(mri_data)]
@@ -91,6 +70,7 @@ if __name__ == "__main__":
     import sys
     sys.path.append("..")
     import proj_utils as pu
+    from mPLSC_functions import _load_behavior_subtables
     
     from boredStats import pls_tools as pls
     
@@ -123,13 +103,13 @@ if __name__ == "__main__":
     
     p = pls.MultitablePLSC(n_iters=10000)
     print('%s: Running permutation testing on latent variables' % pu.ctime())
-    perm_res = p.mult_plsc_eigenperm(y_tables, x_tables)
+    res_perm = p.mult_plsc_eigenperm(y_tables, x_tables)
 
     print('%s: Running bootstrap testing on saliences' % pu.ctime())
-    boot_res = p.mult_plsc_bootstrap_saliences(y_tables, x_tables, 3)
+    res_boot = p.mult_plsc_bootstrap_saliences(y_tables, x_tables, 3)
     
-    output = {'permutation_tests':perm_res,
-              'bootstrap_tests':boot_res,
+    output = {'permutation_tests':res_perm,
+              'bootstrap_tests':res_boot,
               'behavior_subtables':behavior_data,
               'mri_data':mri_data,
               'meg_data':meg_data}
