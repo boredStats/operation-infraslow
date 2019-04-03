@@ -11,7 +11,6 @@ import numpy as np
 import pandas as pd
 import pickle as pkl
 import mPLSC_functions as mf
-from boredStats import pls_tools
 
 import sys
 sys.path.append("..")
@@ -19,38 +18,23 @@ import proj_utils as pu
 
 nilearn.EXPAND_PATH_WILDCARDS = False
 
-def perm_eig(behavior_df, cfc_arrays):
-    p = pls_tools.MultitablePLSC(n_iters=1000, return_perm=False)
-    print('%s: Running eigenvalue permutation' % pu.ctime())
-    res_perm = p.mult_plsc_eigenperm(behavior_df.values, cfc_arrays)
-    
-    pu.plotScree(res_perm['true_eigenvalues'],
-                    res_perm['p_values'],
-                    fname=fig_path + 'scree.png')
-    return res_perm
-
-def boostrap_sal(behavior_df, cfc_arrays):
-    p = pls_tools.MultitablePLSC(n_iters=1000, return_perm=False)
-    print('%s: Running boostrap tests for saliences' % pu.ctime())
-    return p.mult_plsc_bootstrap_saliences(behavior_df.values, cfc_arrays, 3)
-
 ##### Load data ######
 print('%s: Getting metadata, parameters' % pu.ctime())
 pdir = pu._get_proj_dir()
 fig_path = pdir + '/figures/mPLSC/'
 
 data_path = pdir + '/data/mPLSC/'
-cfc_path = data_path + 'phase_amplitude_excelsheets'
+cfc_path = pdir + '/data/phase_amplitude_tables'
 cfc_files = sorted([os.path.join(cfc_path, f) for f in os.listdir(cfc_path)])
 cfc_tables = pd.read_excel(cfc_files[0], sheet_name=None, index_col=0) 
 
 x_tables = [cfc_tables[t].values for t in cfc_tables]
 num_vars_in_x = [cfc_tables[x].values.shape[1] for x in cfc_tables]
 
-with open(pdir + '/data/cog_emotion_variables.txt', 'r') as boi:
+with open(data_path + 'cog_emotion_variables.txt', 'r') as boi:
     behavior_of_interest = [b.replace('\n', '') for b in boi]
     
-with open(data_path + 'renamed_variables_short.txt', 'r') as f:
+with open(data_path + 'cog_emotion_short.txt', 'r') as f:
     short_behavior = [b.replace('\n','') for b in f]
 
 behavior_path = pdir + '/data/hcp_behavioral.xlsx'
@@ -59,15 +43,17 @@ y_table = behavior_raw.loc[:, behavior_of_interest]
 behavior_dict = {o:n for o, n in zip(behavior_of_interest, short_behavior)}
 y_table.rename(columns=behavior_dict, inplace=True)
 
-#Calculating mPLSC
-res_perm = perm_eig(y_table, x_tables) 
-res_boot = boostrap_sal(y_table, x_tables)
+##Calculating mPLSC
+#print('%s: Running eigenvalue permutations' % pu.ctime())
+#res_perm = mf.permutation_pls(y_table, x_tables, fig_path)
+#print('%s: Bootstrapping saliences' % pu.ctime())
+#res_boot = mf.boostrap_sal(y_table, x_tables)
 
-#saving results
 outfile = data_path + 'mPLSC_MEG_session1.pkl'
-with open(outfile, 'wb') as file:
-    pkl.dump(res_perm, file)
-    pkl.dump(res_boot, file)
+##saving results
+#with open(outfile, 'wb') as file:
+#    pkl.dump(res_perm, file)
+#    pkl.dump(res_boot, file)
 
 with open(outfile, 'rb') as file:
     res_perm = pkl.load(file)
