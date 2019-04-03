@@ -156,14 +156,14 @@ if __name__ == "__main__":
     behavior_data = mf.load_behavior_subtables(behavior_raw, behavior_metadata)
     y_tables = [behavior_data[t] for t in list(behavior_data)]
     
-    p = pls.MultitablePLSC(n_iters=10000)
+    p = pls.MultitablePLSC(n_iters=1000)
     print('%s: Running permutation testing on latent variables' % pu.ctime())
     res_perm = p.mult_plsc_eigenperm(y_tables, x_tables)
 
     print('%s: Running bootstrap testing on saliences' % pu.ctime())
     res_boot = p.mult_plsc_bootstrap_saliences(y_tables, x_tables, 4)
     
-    num_latent_vars = len(np.where(res_perm['p_values'] < .0001)[0])
+    num_latent_vars = len(np.where(res_perm['p_values'] < .001)[0])
     latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
     
     print('%s: Organizing behavior saliences' % pu.ctime())
@@ -189,34 +189,33 @@ if __name__ == "__main__":
     print('%s: Averaging saliences within behavior categories' % pu.ctime())
     res_behavior = mf.average_behavior_scores(y_saliences, latent_names)
     
-    fig_path = pdir + '/figures/mPLSC_power_bandpass_filtered'
+#     fig_path = pdir + '/figures/mPLSC_power_bandpass_filtered'
     
-    print('%s: Creating radar plots' % pu.ctime())
-    for name in latent_names:
-        fname = fig_path + '/behavior_%s.png' % name 
-        series = res_behavior[name]
-        mf.plot_radar2(series, choose=False, fname=fname)
+#     print('%s: Creating radar plots' % pu.ctime())
+#     for name in latent_names:
+#         fname = fig_path + '/behavior_%s.png' % name 
+#         series = res_behavior[name]
+#         mf.plot_radar2(series, choose=False, fname=fname)
     
-    roi_path = pdir + '/data/glasser_atlas/'
-    print('%s: Creating brain figures' % pu.ctime())
-    for name in latent_names:
-        name=latent_names[2]
-        mags = res_conj[name].values
+#     roi_path = pdir + '/data/glasser_atlas/'
+#     print('%s: Creating brain figures' % pu.ctime())
+#     for name in latent_names:
+#         mags = res_conj[name].values
         
-        custom_roi = mf.create_custom_roi(roi_path, rois, mags)
+#         custom_roi = mf.create_custom_roi(roi_path, rois, mags)
         
-        fname = fig_path + '/brain_%s.png' % name
-        minval = np.min(mags[np.nonzero(mags)])
-        if len(np.nonzero(mags)) == 1:
-            minval = None
-        fig = mf.plot_brain_saliences(custom_roi, minval)
-        fig.savefig(fname, bbox_inches='tight')
+#         fname = fig_path + '/brain_%s.png' % name
+#         minval = np.min(mags[np.nonzero(mags)])
+#         if len(np.nonzero(mags)) == 1:
+#             minval = None
+#         fig = mf.plot_brain_saliences(custom_roi, minval)
+#         fig.savefig(fname, bbox_inches='tight')
         
-    print('%s: Plotting scree' % pu.ctime())   
-    mf.plotScree(res_perm['true_eigenvalues'],
-                 res_perm['p_values'],
-                 alpha=.001,
-                 fname=fig_path + '/scree.png')
+#     print('%s: Plotting scree' % pu.ctime())   
+#     mf.plotScree(res_perm['true_eigenvalues'],
+#                  res_perm['p_values'],
+#                  alpha=.001,
+#                  fname=fig_path + '/scree.png')
     
     print('%s: Saving results' % pu.ctime())
     output = {'permutation_tests':res_perm,
