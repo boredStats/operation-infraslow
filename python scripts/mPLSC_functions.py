@@ -211,7 +211,8 @@ def plot_radar2(saliences_series, choose=True, separate_neg=True, fname=None):
     theta = [n / float(N) * 2 * np.pi for n in range(N)]
     theta.append(theta[0])
     
-    ax = plt.subplot(111, projection='polar')
+    fig = plt.figure(figsize=(8.0, 6.0))
+    ax = fig.add_subplot(111, projection='polar')
     ax.set_rmax(2)
     ax.set_rticks([])
     ticks = np.linspace(0, 360, N+1)[:-1] 
@@ -229,12 +230,12 @@ def plot_radar2(saliences_series, choose=True, separate_neg=True, fname=None):
         ax.plot(theta, neg_values, 'b')
         ax.fill(theta, neg_values, 'b', alpha=0.1)
     
-    max_val = .3
+    max_val = np.max(pos_values) 
     ax.set_ylim(-.01, max_val)
     ax.set_xticks(np.deg2rad(ticks))
     ticklabels = list(sals.index)
     ax.set_xticklabels(ticklabels, fontsize=10)
-    ax.set_yticks(np.arange(.05, max_val, .05))
+    ax.set_yticks(np.arange(0.0, max_val, .005))
     
     plt.gcf().canvas.draw()
     angles = np.linspace(0,2*np.pi,len(ax.get_xticklabels())+1)
@@ -249,8 +250,8 @@ def plot_radar2(saliences_series, choose=True, separate_neg=True, fname=None):
         labels.append(lab)
     ax.set_xticklabels([])
     if fname is not None:
-        plt.savefig(fname, bbox_inches='tight', dpi=600)
-    plt.show()
+        fig.savefig(fname, bbox_inches='tight', dpi=600)
+    plt.clf()
 
 def create_custom_roi(roi_path, rois_to_combine, roi_magnitudes):
     """
@@ -300,7 +301,7 @@ def create_custom_roi(roi_path, rois_to_combine, roi_magnitudes):
     nifti = nib.Nifti1Image(template, t_vol.affine, t_vol.header)
     return nifti
 
-def plot_brain_saliences(custom_roi, minval, figpath=None):
+def plot_brain_saliences(custom_roi, minval, maxval=None, figpath=None):
     fsaverage = datasets.fetch_surf_fsaverage()
     orders = [('medial', 'left'), ('medial', 'right'),
              ('lateral', 'left'), ('lateral', 'right')]
@@ -323,17 +324,18 @@ def plot_brain_saliences(custom_roi, minval, figpath=None):
         plotting.plot_surf_stat_map(
                 fsaverage['infl_%s' % hemi],
                 texture,
-                cmap='seismic',
+                cmap='Reds',#'coolwarm',#'seismic',
                 hemi=hemi,
                 view=view,
                 bg_on_data=True,
                 axes=axes_list[index],
                 bg_map=fsaverage['sulc_%s' % hemi],
                 threshold=minval,
+                vmax=maxval,
                 output_file=figpath,
                 figure=fig,
                 colorbar=False)
-    return fig
+    plt.clf()
 
 def _avg_behavior_saliences_squared(y_salience_dict, num_latent_vars):
     #Function for squaring and averaging behavior saliences, legacy function
