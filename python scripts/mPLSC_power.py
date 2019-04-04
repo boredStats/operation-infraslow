@@ -156,10 +156,11 @@ def _x_conjunctions_single_session(single_session_res, latent_variable_names, re
     """Run conjunctions on brain data across the three models"""
 
     sessions = list(single_session_res)
-
+    print(sessions)
     x_salience_list = {}
     for sess in sessions:
         output = single_session_res[sess]
+        print(list(output))
         x_salience_list[sess] = output['x_saliences']
 
     output = {}
@@ -317,11 +318,18 @@ if __name__ == "__main__":
         
         single_session_mPLSC[meg_subtable_name] = output
     
+    print('%s: Running behavior conjunctions' % pu.ctime())
     behavior_conj = _y_conjunctions_single_session(single_session_mPLSC, latent_names, return_avg=True)
-    single_session_mPLSC['behavior_conjunction'] = behavior_conj
     
+    print('%s: Running brain conjunctions' % pu.ctime())
     brain_conj = _x_conjunctions_single_session(single_session_mPLSC, latent_names, return_avg=True)
-    single_session_mPLSC['brain_conjunction'] = brain_conj
+    
+#     single_session_mPLSC['behavior_conjunction'] = behavior_conj
+#     single_session_mPLSC['brain_conjunction'] = brain_conj
     
     with open(pdir + '/data/mPLSC_power_per_session.pkl', 'wb') as file:
+        single_session_mPLSC['behavior_conjunction'] = behavior_conj
+        single_session_mPLSC['brain_conjunction'] = brain_conj
         pkl.dump(single_session_mPLSC, file)
+        
+    print('%s: Finished' % pu.ctime())
