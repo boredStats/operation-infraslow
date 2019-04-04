@@ -30,6 +30,22 @@ def _get_highest_squared_brain_salience(res_conj, latent_names):
             
         return np.max(vals)
     
+def save_xls(dict_df, path):
+    """
+    Save a dictionary of dataframes to an excel file, with each dataframe as a seperate page
+    """
+
+    writer = pd.ExcelWriter(path)
+    for key in dict_df:
+        dict_df[key].to_excel(writer, '%s' % key)
+
+    writer.save()
+
+def plot_bar(series):
+    x = np.arange(len(series.values))
+    fig, ax = plt.subplots()
+    plt.bar(x, series.values)
+    
 if __name__ == "__main__":
     import sys
     sys.path.append("..")
@@ -50,31 +66,55 @@ if __name__ == "__main__":
     num_latent_vars = len(np.where(res_perm['p_values'] < alpha)[0])
     latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
     
-    print('%s: Plotting scree' % pu.ctime())   
-    mf.plotScree(res_perm['true_eigenvalues'],
-                 res_perm['p_values'],
-                 alpha=alpha,
-                 fname=fig_path + '/scree.png')
+    save_xls(y_saliences, pdir + '/data/mPLSC_power_behavior_saliences.xlsx')
     
-    print('%s: Creating radar plots' % pu.ctime())
-    for name in latent_names:
-        fname = fig_path + '/behavior_%s.png' % name 
-        series = res_behavior[name] ** 2
-        mf.plot_radar2(series, choose=False, separate_neg=False, fname=fname)
+    y_squared_saliences = {}
+    keys = list(y_saliences)
+    for key in keys:
+        df = y_saliences[key]
+        y_squared_saliences[key] = df**2
         
-    print('%s: Creating brain figures' % pu.ctime())
-    maxval = _get_highest_squared_brain_salience(res_conj, latent_names)
-    print('Max salience is %.3f' % maxval)
+    save_xls(y_squared_saliences, pdir + '/data/mPLSC_power_behavior_saliences_squared.xlsx')
+#     print('%s: Plotting scree' % pu.ctime())   
+#     mf.plotScree(res_perm['true_eigenvalues'],
+#                  res_perm['p_values'],
+#                  alpha=alpha,
+#                  fname=fig_path + '/scree.png')
+
+#     print('%s: Creating bar plots' % pu.ctime())
+#     name = latent_names[0]
+#     fname = fig_path + '/behavior_bar_%s.png' % name
     
-    for name in latent_names:
-        mags = res_conj[name].values **2
+#     behavior_categories = list(y_saliences)
+    
+#     series = y_saliences[behavior_categories[0]][name]
+#     print(series)
+#     plot_bar(series)
+    
+#     print('%s: Creating radar plots' % pu.ctime())
+#     for name in latent_names:
+#         fname = fig_path + '/behavior_%s.png' % name 
+#         series = res_behavior[name] ** 2
+#         mf.plot_radar2(series, choose=False, separate_neg=False, fname=fname)
         
-        custom_roi = mf.create_custom_roi(roi_path, rois, mags)
-        
-        fname = fig_path + '/brain_%s.png' % name
-        minval = np.min(mags[np.nonzero(mags)])
-        if len(np.nonzero(mags)) == 1:
-            minval = None
-        mf.plot_brain_saliences(custom_roi, minval, maxval, figpath=fname)
+#     print('%s: Creating brain figures' % pu.ctime())
+#     maxval = _get_highest_squared_brain_salience(res_conj, latent_names)
+#     print('Max salience is %.3f' % maxval)
+#     for name in latent_names:
+#         mags = res_conj[name].values **2
+#         bin_mags = []
+#         for m in mags:
+#             if m > 0:
+#                 bin_mags.append(1)
+#             else:
+#                 bin_mags.append(0)
+
+#         custom_roi = mf.create_custom_roi(roi_path, rois, bin_mags)        
+#         fname = fig_path + '/brain_binarized_%s.png' % name
+# #         fname = fig_path + '/brain_%s.png' % name
+#         minval = np.min(mags[np.nonzero(mags)])
+#         if len(np.nonzero(mags)) == 1:
+#             minval = None
+#         mf.plot_brain_saliences(custom_roi, minval, maxval, figpath=fname)
     
     print('%s: Finished' % pu.ctime())
