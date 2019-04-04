@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Functions for mPLSC
+Utilities for mPLSC analyses
 
 Created on Mon Mar 25 12:43:05 2019
 """
@@ -12,23 +12,7 @@ import nibabel as nib
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from copy import deepcopy
-from boredStats import pls_tools
 from nilearn import surface, plotting, datasets
-
-def permutation_pls(y_tables, x_tables, scree_path=None):
-    p = pls_tools.MultitablePLSC(n_iters=1000, return_perm=False)
-    res_perm = p.mult_plsc_eigenperm(y_tables, x_tables)
-    
-    if scree_path is not None:
-        plotScree(res_perm['true_eigenvalues'],
-                  res_perm['p_values'],
-                  fname=scree_path + 'scree.png')
-    return res_perm
-
-def boostrap_sal(y_tables, x_tables, z=2):
-    p = pls_tools.MultitablePLSC(n_iters=1000, return_perm=False)
-    res_boot = p.mult_plsc_bootstrap_saliences(y_tables, x_tables, z)
-    return res_boot
 
 def load_behavior_subtables(behavior_raw, variable_metadata):
     #Support function - load y tables
@@ -337,6 +321,10 @@ def plot_brain_saliences(custom_roi, minval, maxval=None, figpath=None):
                 colorbar=False)
     plt.clf()
 
+def plot_bar(series):
+    x = np.arange(1, len(series))
+    fig, ax = plt.bar(x, series.values)
+    
 def _avg_behavior_saliences_squared(y_salience_dict, num_latent_vars):
     #Function for squaring and averaging behavior saliences, legacy function
     keys = list(y_salience_dict)
