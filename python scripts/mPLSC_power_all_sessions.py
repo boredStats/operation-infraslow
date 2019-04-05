@@ -166,11 +166,15 @@ if __name__ == "__main__":
     latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
     
     print('%s: Organizing behavior saliences' % pu.ctime())
-    y_saliences = mf.create_salience_subtables(
-            sals=res_boot['y_saliences'][:, :num_latent_vars],
-            dataframes=y_tables,
-            subtable_names=list(behavior_data),
-            latent_names=latent_names)
+    y_saliences = mf.create_salience_subtables(sals=res_boot['y_saliences'][:, :num_latent_vars],
+                                               dataframes=y_tables,
+                                               subtable_names=list(behavior_data),
+                                               latent_names=latent_names)
+    
+    y_salience_z_scores = mf.create_salience_subtables(sals=res_boot['zscores_y_saliences'][:, :num_latent_vars],
+                                                       dataframes=y_tables,
+                                                       subtable_names=list(behavior_data),
+                                                       latent_names=latent_names)
     
     print('%s: Averaging saliences within behavior categories' % pu.ctime())
     res_behavior = mf.average_behavior_scores(y_saliences, latent_names)
@@ -179,11 +183,15 @@ if __name__ == "__main__":
 #     mri_subtable_names = ['mri_%s' % s for s in mri_sess]
     meg_subtable_names = ['meg_%s' % s for s in meg_sess]
     x_table_names = meg_subtable_names #+ mri_subtable_names 
-    x_saliences = mf.create_salience_subtables(
-            sals=res_boot['x_saliences'][:, :num_latent_vars],
-            dataframes=x_tables,
-            subtable_names=x_table_names,
-            latent_names=latent_names)
+    x_saliences = mf.create_salience_subtables(sals=res_boot['x_saliences'][:, :num_latent_vars],
+                                               dataframes=x_tables,
+                                               subtable_names=x_table_names,
+                                               latent_names=latent_names)
+    
+    x_salience_z_scores = mf.create_salience_subtables(sals=res_boot['zscores_x_saliences'][:, :num_latent_vars],
+                                                       dataframes=x_tables,
+                                                       subtable_names=x_table_names,
+                                                       latent_names=latent_names)
     
     print('%s: Running conjunction analysis' % pu.ctime())
     res_conj = _x_conjunctions(x_saliences, latent_names, rois)
@@ -193,6 +201,8 @@ if __name__ == "__main__":
               'bootstrap_tests':res_boot,
               'y_saliences':y_saliences,
               'x_saliences':x_saliences,
+              'y_saliences_zscores':y_salience_z_scores,
+              'x_saliences_zscores':x_salience_z_scores,
               'behaviors':res_behavior,
               'conjunctions':res_conj}
     
