@@ -67,36 +67,43 @@ if __name__ == "__main__":
     latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
     
     save_xls(y_saliences, pdir + '/data/mPLSC_power_behavior_saliences.xlsx')
-    
+    behavior_categories = list(y_saliences)
     y_squared_saliences = {}
-    keys = list(y_saliences)
-    for key in keys:
-        df = y_saliences[key]
-        y_squared_saliences[key] = df**2
-        
+    for cat in behavior_categories:
+        df = y_saliences[cat]
+        y_squared_saliences[cat] = df**2
     save_xls(y_squared_saliences, pdir + '/data/mPLSC_power_behavior_saliences_squared.xlsx')
+
+    save_xls(x_saliences, pdir + '/data/mPLSC_power_brain_saliences.xlsx')
+    sessions = list(x_saliences)
+    x_squared_saliences = {}
+    for sess in sessions:
+        df = x_saliences[sess]
+        x_squared_saliences[sess] = df**2
+    save_xls(x_squared_saliences, pdir + '/data/mPLSC_power_brain_saliences_squared.xlsx')
+    
 #     print('%s: Plotting scree' % pu.ctime())   
 #     mf.plotScree(res_perm['true_eigenvalues'],
 #                  res_perm['p_values'],
 #                  alpha=alpha,
 #                  fname=fig_path + '/scree.png')
 
-#     print('%s: Creating bar plots' % pu.ctime())
-#     name = latent_names[0]
-#     fname = fig_path + '/behavior_bar_%s.png' % name
-    
-#     behavior_categories = list(y_saliences)
-    
-#     series = y_saliences[behavior_categories[0]][name]
-#     print(series)
-#     plot_bar(series)
+#     y_summed_squared_saliences = pd.DataFrame(index=behavior_categories, columns=latent_names)
+#     max_vals = []
+#     for c, cat in enumerate(behavior_categories):
+#         df = y_squared_saliences[cat]
+#         sums = np.sum(df.values, axis=0)
+#         y_summed_squared_saliences.iloc[c] = sums
+#         max_vals.append(np.max(sums))
+#     max_val = np.max(max_vals)
     
 #     print('%s: Creating radar plots' % pu.ctime())
 #     for name in latent_names:
-#         fname = fig_path + '/behavior_%s.png' % name 
-#         series = res_behavior[name] ** 2
-#         mf.plot_radar2(series, choose=False, separate_neg=False, fname=fname)
-        
+#         fname = fig_path + '/behavior_summed_%s.png' % name 
+#         series = y_summed_squared_saliences[name]
+#         mf.plot_radar2(series, max_val=.5, choose=False, separate_neg=False, fname=fname)
+    
+
 #     print('%s: Creating brain figures' % pu.ctime())
 #     maxval = _get_highest_squared_brain_salience(res_conj, latent_names)
 #     print('Max salience is %.3f' % maxval)
