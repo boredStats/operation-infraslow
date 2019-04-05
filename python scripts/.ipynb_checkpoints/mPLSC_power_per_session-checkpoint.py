@@ -100,7 +100,14 @@ def _y_conjunctions_single_session(single_session_res, latent_variable_names, re
 
             conj_data = pd.DataFrame(np.asarray(behaviors).T, index=sub_behaviors)
             res = mf.conjunction_analysis(conj_data, 'any', return_avg=return_avg)
-            category_conjunctions.append(res.values)
+            
+            res_squared = mf.conjunction_analysis(conj_data**2, 'any', return_avg=return_avg)
+            for row in range(res_squared.values.shape[0]):
+                for col in range(res_squared.values.shape[1]):
+                    if res[row, col] == 0:
+                        res_squared[row, col] = 0
+
+            category_conjunctions.append(res_squared.values)
         conj_all_latent_variables = np.squeeze(np.asarray(category_conjunctions).T)
 
         output[cat] = pd.DataFrame(conj_all_latent_variables,
@@ -126,13 +133,19 @@ def _x_conjunctions_single_session(single_session_res, latent_variable_names, re
         brains = []
         for sess in sessions: 
             df = x_salience_list[sess]
-            brains.append(df[name].values ** 2)
+            brains.append(df[name].values)
             rois = df.index
 
         conj_data = pd.DataFrame(np.asarray(brains).T, index=rois)
-        res = mf.conjunction_analysis(conj_data, 'any', return_avg=return_avg)
-
-        brain_conjunctions.append(res.values)
+        res = mf.conjunction_analysis(conj_data, 'sign', return_avg=return_avg)
+        
+        res_squared = mf.conjunction_analysis(conj_data**2, 'any', return_avg=return_avg)
+        for row in range(res_squared.values.shape[0]):
+            for col in range(res_squared.values.shape[1]):
+                if res[row, col] == 0:
+                    res_squared[row, col] = 0
+        
+        brain_conjunctions.append(res_squared.values)
 
     conj_all_latent_variables = np.squeeze(np.asarray(brain_conjunctions).T)
     output = pd.DataFrame(conj_all_latent_variables,
@@ -178,7 +191,7 @@ if __name__ == "__main__":
     
     fig_path = pdir + '/figures/mPLSC_power_per_session'
     single_session_mPLSC = {}
-    p = pls.MultitablePLSC(n_iters=10000)
+    p = pls.MultitablePLSC(n_iters=10000, return_perm=True)
     alpha = .001
     latent_variable_check = []
     for index, x_table in enumerate(x_tables):
@@ -202,7 +215,7 @@ if __name__ == "__main__":
     for index, x_table in enumerate(x_tables):
         x_tables_jr = [x_table]
         print('%s: Running bootstrap testing on saliences' % pu.ctime())
-        res_boot = p.mult_plsc_bootstrap_saliences(y_tables, x_tables_jr, 4)
+        res_boot = p.mult_plsc_bootstrap_saliences(y_tables, x_tables_jr, 5)
     
         print('%s: Organizing behavior saliences' % pu.ctime())
         y_saliences = mf.create_salience_subtables(
@@ -240,5 +253,6 @@ if __name__ == "__main__":
         single_session_mPLSC['behavior_conjunction'] = behavior_conj
         single_session_mPLSC['brain_conjunction'] = brain_conj
         pkl.dump(single_session_mPLSC, file)
+        
         
     print('%s: Finished' % pu.ctime())
