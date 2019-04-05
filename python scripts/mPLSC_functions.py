@@ -328,6 +328,17 @@ def plot_bar(series):
     x = np.arange(1, len(series))
     fig, ax = plt.bar(x, series.values)
     
+def save_xls(dict_df, path):
+    """
+    Save a dictionary of dataframes to an excel file, with each dataframe as a seperate page
+    """
+
+    writer = pd.ExcelWriter(path)
+    for key in dict_df:
+        dict_df[key].to_excel(writer, '%s' % key)
+
+    writer.save()
+
 def _avg_behavior_saliences_squared(y_salience_dict, num_latent_vars):
     #Function for squaring and averaging behavior saliences, legacy function
     keys = list(y_salience_dict)
