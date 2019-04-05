@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Run multi-table PLS-C using rsfMRI power data and MEG power data
+Run multi-table PLS-C using MEG power data
 
 Created on Thu Mar 28 12:55:29 2019
 """
