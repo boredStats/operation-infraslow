@@ -155,7 +155,7 @@ if __name__ == "__main__":
     behavior_data = mf.load_behavior_subtables(behavior_raw, behavior_metadata)
     y_tables = [behavior_data[t] for t in list(behavior_data)]
     
-    p = pls.MultitablePLSC(n_iters=10000)
+    p = pls.MultitablePLSC(n_iters=10000, return_perm=True)
     print('%s: Running permutation testing on latent variables' % pu.ctime())
     res_perm = p.mult_plsc_eigenperm(y_tables, x_tables)
 
