@@ -176,7 +176,7 @@ def plotScree(eigs, pvals=None, alpha=.05, percent=True, kaiser=False, fname=Non
         fig.savefig(fname, bbox_inches='tight')
     return fig, ax, ax2
 
-def plot_radar2(saliences_series, choose=True, separate_neg=True, fname=None):
+def plot_radar2(saliences_series, max_val=None, choose=True, separate_neg=True, fname=None):
     """Plot behavior saliences in a radar plot
     """
     def choose_saliences(series, num_to_plot=10):
@@ -214,12 +214,14 @@ def plot_radar2(saliences_series, choose=True, separate_neg=True, fname=None):
         ax.plot(theta, neg_values, 'b')
         ax.fill(theta, neg_values, 'b', alpha=0.1)
     
-    max_val = np.max(pos_values) 
+    if max_val is None:
+        max_val = np.max(pos_values)
+        
     ax.set_ylim(-.01, max_val)
     ax.set_xticks(np.deg2rad(ticks))
     ticklabels = list(sals.index)
     ax.set_xticklabels(ticklabels, fontsize=10)
-    ax.set_yticks(np.arange(0.0, max_val, .005))
+    ax.set_yticks(np.arange(0.0, max_val, .1))
     
     plt.gcf().canvas.draw()
     angles = np.linspace(0,2*np.pi,len(ax.get_xticklabels())+1)
@@ -236,6 +238,7 @@ def plot_radar2(saliences_series, choose=True, separate_neg=True, fname=None):
     if fname is not None:
         fig.savefig(fname, bbox_inches='tight', dpi=600)
     plt.clf()
+    return max_val
 
 def create_custom_roi(roi_path, rois_to_combine, roi_magnitudes):
     """
