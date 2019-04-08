@@ -220,10 +220,11 @@ if __name__ == "__main__":
         y_saliences_tables = mf.create_salience_subtables(y_saliences, y_tables, list(behavior_data), latent_names)
         
         y_salience_z = sals=res_boot['zscores_y_saliences'][:, :best_num_latent_vars]
-        y_salience_ztables = mf.create_salience_subtables(y_salience_z, y_tables, list(behavior_data), latent_names)
+        y_saliences_ztables = mf.create_salience_subtables(y_salience_z, y_tables, list(behavior_data), latent_names)
         
         print('%s: Averaging saliences within behavior categories' % pu.ctime())
-        res_behavior = mf.average_behavior_scores(y_saliences, latent_names)
+        print(list(y_saliences))
+        res_behavior = mf.average_behavior_scores(y_saliences_tables, latent_names)
     
         print('%s: Organizing brain saliences' % pu.ctime())
         meg_subtable_name = 'meg_%s' % meg_sess[index]
@@ -238,22 +239,22 @@ if __name__ == "__main__":
                   'bootstrap_tests':res_boot,
                   'y_saliences':y_saliences_tables,
                   'x_saliences':x_saliences_tables,
-                  'y_saliences_zscores':y_salience_ztables,
-                  'x_saliences_zscores':x_salience_ztables,
+                  'y_saliences_zscores':y_saliences_ztables,
+                  'x_saliences_zscores':x_saliences_ztables,
                   'behaviors':res_behavior}
         
         single_session_mPLSC[meg_subtable_name] = output
     
-    print('%s: Running behavior conjunctions' % pu.ctime())
-    behavior_conj = _y_conjunctions_single_session(single_session_mPLSC, latent_names, return_avg=True)
+#     print('%s: Running behavior conjunctions' % pu.ctime())
+#     behavior_conj = _y_conjunctions_single_session(single_session_mPLSC, latent_names, return_avg=True)
     
-    print('%s: Running brain conjunctions' % pu.ctime())
-    brain_conj = _x_conjunctions_single_session(single_session_mPLSC, latent_names, return_avg=True)
+#     print('%s: Running brain conjunctions' % pu.ctime())
+#     brain_conj = _x_conjunctions_single_session(single_session_mPLSC, latent_names, return_avg=True)
     
     print('%s: Saving results' % pu.ctime())
-    with open(pdir + '/data/mPLSC_power_per_session.pkl', 'wb') as file:
-        single_session_mPLSC['behavior_conjunction'] = behavior_conj
-        single_session_mPLSC['brain_conjunction'] = brain_conj
+    with open(pdir + '/data/mPLSC/mPLSC_power_per_session.pkl', 'wb') as file:
+#         single_session_mPLSC['behavior_conjunction'] = behavior_conj
+#         single_session_mPLSC['brain_conjunction'] = brain_conj
         pkl.dump(single_session_mPLSC, file)
         
     print('%s: Finished' % pu.ctime())
