@@ -143,22 +143,19 @@ if __name__ == "__main__":
     x_tables = [meg_data[t] for t in list(meg_data)]
     
     print('%s: Building subtables of behavior data' % pu.ctime())
-    behavior_metadata = pd.read_csv(pdir + '/data/b_variables_mPLSC.txt',
-                                   delimiter='\t', header=None)
+    behavior_metadata = pd.read_csv(pdir + '/data/b_variables_mPLSC.txt', delimiter='\t', header=None)
 
-    behavior_metadata.rename(dict(zip([0, 1], ['category','name'])),
-                                axis='columns', inplace=True)
+    behavior_metadata.rename(dict(zip([0, 1], ['category','name'])), axis='columns', inplace=True)
     
-    behavior_raw = pd.read_excel(pdir + '/data/hcp_behavioral.xlsx',
-                                  index_col=0, sheet_name='cleaned')
+    behavior_raw = pd.read_excel(pdir + '/data/hcp_behavioral.xlsx', index_col=0, sheet_name='cleaned')
     
     behavior_data = mf.load_behavior_subtables(behavior_raw, behavior_metadata)
     y_tables = [behavior_data[t] for t in list(behavior_data)]
     
-    p = pls.MultitablePLSC(n_iters=10000, return_perm=True)
+    p = pls.MultitablePLSC(n_iters=10000, return_perm=False)
     print('%s: Running permutation testing on latent variables' % pu.ctime())
     res_perm = p.mult_plsc_eigenperm(y_tables, x_tables)
-
+    
     print('%s: Running bootstrap testing on saliences' % pu.ctime())
     res_boot = p.mult_plsc_bootstrap_saliences(y_tables, x_tables, 4)
     
@@ -166,43 +163,34 @@ if __name__ == "__main__":
     latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
     
     print('%s: Organizing behavior saliences' % pu.ctime())
-    y_saliences = mf.create_salience_subtables(sals=res_boot['y_saliences'][:, :num_latent_vars],
-                                               dataframes=y_tables,
-                                               subtable_names=list(behavior_data),
-                                               latent_names=latent_names)
+    y_saliences = res_boot['y_saliences'][:, :num_latent_vars]
+    y_salience_tables = mf.create_salience_subtables(y_saliences, y_tables, list(behavior_data), latent_names)
     
-    y_salience_z_scores = mf.create_salience_subtables(sals=res_boot['zscores_y_saliences'][:, :num_latent_vars],
-                                                       dataframes=y_tables,
-                                                       subtable_names=list(behavior_data),
-                                                       latent_names=latent_names)
+    y_salience_z = sals=res_boot['zscores_y_saliences'][:, :num_latent_vars]
+    y_salience_ztables = mf.create_salience_subtables(y_salience_z, y_tables, list(behavior_data), latent_names)
     
     print('%s: Averaging saliences within behavior categories' % pu.ctime())
-    res_behavior = mf.average_behavior_scores(y_saliences, latent_names)
+    res_behavior = mf.average_behavior_scores(y_salience_tables, latent_names)
     
     print('%s: Organizing brain saliences' % pu.ctime())
-#     mri_subtable_names = ['mri_%s' % s for s in mri_sess]
     meg_subtable_names = ['meg_%s' % s for s in meg_sess]
-    x_table_names = meg_subtable_names #+ mri_subtable_names 
-    x_saliences = mf.create_salience_subtables(sals=res_boot['x_saliences'][:, :num_latent_vars],
-                                               dataframes=x_tables,
-                                               subtable_names=x_table_names,
-                                               latent_names=latent_names)
+    x_table_names = meg_subtable_names
+    x_saliences = res_boot['x_saliences'][:, :num_latent_vars]
+    x_salience_tables = mf.create_salience_subtables(x_saliences, x_tables, x_table_names, latent_names)
     
-    x_salience_z_scores = mf.create_salience_subtables(sals=res_boot['zscores_x_saliences'][:, :num_latent_vars],
-                                                       dataframes=x_tables,
-                                                       subtable_names=x_table_names,
-                                                       latent_names=latent_names)
+    x_salience_z = sals=res_boot['zscores_x_saliences'][:, :num_latent_vars]
+    x_salience_ztables = mf.create_salience_subtables(x_salience_z, x_tables, x_table_names, latent_names)
     
     print('%s: Running conjunction analysis' % pu.ctime())
-    res_conj = _x_conjunctions(x_saliences, latent_names, rois)
+    res_conj = _x_conjunctions(x_salience_tables, latent_names, rois)
     
     print('%s: Saving results' % pu.ctime())
     output = {'permutation_tests':res_perm,
               'bootstrap_tests':res_boot,
-              'y_saliences':y_saliences,
-              'x_saliences':x_saliences,
-              'y_saliences_zscores':y_salience_z_scores,
-              'x_saliences_zscores':x_salience_z_scores,
+              'y_saliences':y_salience_tables,
+              'x_saliences':x_salience_tables,
+              'y_saliences_zscores':y_salience_ztables,
+              'x_saliences_zscores':x_salience_ztables,
               'behaviors':res_behavior,
               'conjunctions':res_conj}
     
