@@ -177,11 +177,9 @@ if __name__ == "__main__":
     x_tables = [meg_data[t] for t in list(meg_data)]
     
     print('%s: Building subtables of behavior data' % pu.ctime())
-    behavior_metadata = pd.read_csv(pdir + '/data/b_variables_mPLSC.txt',
-                                   delimiter='\t', header=None)
+    behavior_metadata = pd.read_csv(pdir + '/data/b_variables_mPLSC.txt', delimiter='\t', header=None)
 
-    behavior_metadata.rename(dict(zip([0, 1], ['category','name'])),
-                                axis='columns', inplace=True)
+    behavior_metadata.rename(dict(zip([0, 1], ['category','name'])), axis='columns', inplace=True)
     
     behavior_raw = pd.read_excel(pdir + '/data/hcp_behavioral.xlsx',
                                   index_col=0, sheet_name='cleaned')
@@ -208,8 +206,8 @@ if __name__ == "__main__":
                      alpha=alpha,
                      fname=fig_path + '/scree_%s.png' % meg_sess[index])
 
-    true_num_latent_vars = np.min(latent_variable_check)
-    latent_names = ['LatentVar%d' % (n+1) for n in range(true_num_latent_vars)]
+    best_num_latent_vars = np.min(latent_variable_check)
+    latent_names = ['LatentVar%d' % (n+1) for n in range(best_num_latent_vars)]
     print(latent_names)
     
     for index, x_table in enumerate(x_tables):
@@ -218,10 +216,10 @@ if __name__ == "__main__":
         res_boot = p.mult_plsc_bootstrap_saliences(y_tables, x_tables_jr, 4)
     
         print('%s: Organizing behavior saliences' % pu.ctime())
-        y_saliences = res_boot['y_saliences'][:, :true_num_latent_vars]
+        y_saliences = res_boot['y_saliences'][:, :best_num_latent_vars]
         y_saliences_tables = mf.create_salience_subtables(y_saliences, y_tables, list(behavior_data), latent_names)
         
-        y_salience_z = sals=res_boot['zscores_y_saliences'][:, :num_latent_vars]
+        y_salience_z = sals=res_boot['zscores_y_saliences'][:, :best_num_latent_vars]
         y_salience_ztables = mf.create_salience_subtables(y_salience_z, y_tables, list(behavior_data), latent_names)
         
         print('%s: Averaging saliences within behavior categories' % pu.ctime())
@@ -230,10 +228,10 @@ if __name__ == "__main__":
         print('%s: Organizing brain saliences' % pu.ctime())
         meg_subtable_name = 'meg_%s' % meg_sess[index]
         x_table_name = meg_subtable_name 
-        x_saliences = res_boot['x_saliences'][:, :true_num_latent_vars]
+        x_saliences = res_boot['x_saliences'][:, :best_num_latent_vars]
         x_saliences_tables = pd.DataFrame(x_saliences, index=rois, columns=latent_names)
         
-        x_salience_z = sals=res_boot['zscores_x_saliences'][:, :num_latent_vars]
+        x_salience_z = sals=res_boot['zscores_x_saliences'][:, :best_num_latent_vars]
         x_saliences_ztables = pd.DataFrame(x_salience_z, index=rois, columns=latent_names)
         
         output = {'permutation_tests':res_perm,
