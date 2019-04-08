@@ -34,11 +34,12 @@ class proj_data():
         database_file = os.path.join(server,'multimodal_HCP.hdf5')
         self.database = h5.File(database_file, 'r+')
         
-        self.bands = {'BOLD': (.0005, 1/.72/2), #Bandpass range for HCP rs-fMRI
-                      'Slow 4': (.02, .06),
-                      'Slow 3': (.06, .2),
-                      'Slow 2': (.2, .5),
-                      'Slow 1': (.5, 1.5),
+        self.bands = {#'BOLD': (.0005, 1/.72/2), #Bandpass range for HCP rs-fMRI
+                      'BOLD bandpass': (.01, .1),
+                      #'Slow 4': (.02, .06),
+                      #'Slow 3': (.06, .2),
+                      #'Slow 2': (.2, .5),
+                      #'Slow 1': (.5, 1.5),
                       'Delta': (1.5, 4),
                       'Theta': (4, 8),
                       'Alpha': (8, 12),

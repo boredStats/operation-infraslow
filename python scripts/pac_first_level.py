@@ -14,7 +14,7 @@ sys.path.append("..")
 import proj_utils as pu
 
 #Functionized analyses
-def _extract_phase_amp(meg_subj, meg_sess, database, rois, fs, band_dict):
+def _extract_phase_amp(meg_subj, meg_sess, database, rois, fs, band_dict, phase_amp_file):
     
     def build_output(ts_data, fs, rois, band):
         #Load in a subject, calculate phase/amplitude for each roi
@@ -30,7 +30,7 @@ def _extract_phase_amp(meg_subj, meg_sess, database, rois, fs, band_dict):
         return phase_mat, amp_mat
     
     print('%s: Extracting phase/amp data' % pu.ctime())
-    phase_amp_file = pdir + '/data/MEG_phase_amp_data.hdf5'
+#     phase_amp_file = pdir + '/data/MEG_phase_amp_data.hdf5'
     for sess in meg_sess:
         for subj in meg_subj:
             for b in band_dict:
@@ -38,11 +38,11 @@ def _extract_phase_amp(meg_subj, meg_sess, database, rois, fs, band_dict):
                 out_file = h5py.File(phase_amp_file)
                 
                 print('%s: %s %s %s' % (pu.ctime(), sess, str(subj), b))
-                dset = database['/'+ subj +'/MEG/'+ sess +'/timeseries']
+                dset = database[subj +'/MEG/'+ sess +'/timeseries']
                 meg_data = pu.read_database(dset, rois)
                 phase_mat, amp_mat = build_output(meg_data, fs, rois, band)
                 
-                grp = out_file.require_group('/' + subj + '/' + sess + '/' + b)
+                grp = out_file.require_group(subj + '/' + sess + '/' + b)
                 grp.create_dataset('phase_data', data=phase_mat)
                 grp.create_dataset('amplitude_data', data=amp_mat)
                 out_file.close()      
@@ -60,15 +60,14 @@ band_dict = pData['bands']
 meg_subj, meg_sess = pdObj.get_meg_metadata()
 fs = 500
 
-#_extract_phase_amp(meg_subj, meg_sess, database, rois, fs, band_dict)
-#print('%s: Finished extracting phase/amplitude data' % pu.ctime())
+data_path = pdir + '/data/MEG_BOLD_phase_amp_data.hdf5'
+_extract_phase_amp(meg_subj, meg_sess, database, rois, fs, band_dict, data_path)
+print('%s: Finished extracting phase/amplitude data' % pu.ctime())
 
 print('%s: Running phase-amplitdue coupling' % pu.ctime())
-data_path = pdir + '/data/MEG_phase_amp_data.hdf5'
-out_path = pdir + 'MEG_pac_first_level_slow_with_supra.hdf5'
-#out_path = pdir + '/data/MEG_pac_first_level_supra_only.hdf5'
+coupling_path = pdir + '/data/MEG_BOLD_phase_amp_coupling.hdf5'
 
-slow_bands = ['BOLD', 'Slow 4', 'Slow 3', 'Slow 2', 'Slow 1']
+slow_bands = ['BOLD bandpass']
 reg_bands = ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma']
 
 band1 = slow_bands
@@ -81,7 +80,7 @@ for sess in meg_sess:
         
         for r, roi in enumerate(rois):
             print('%s: %s %s %s' % (pu.ctime(), sess, str(subj), roi))
-            cfc_file = h5py.File(out_path)
+            cfc_file = h5py.File(coupling_path)
             
             group_path = sess + '/' + subj + '/' + roi
             if group_path in cfc_file:
