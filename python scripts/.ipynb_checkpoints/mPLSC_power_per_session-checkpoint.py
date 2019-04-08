@@ -191,7 +191,7 @@ if __name__ == "__main__":
     
     fig_path = pdir + '/figures/mPLSC_power_per_session'
     single_session_mPLSC = {}
-    p = pls.MultitablePLSC(n_iters=10000, return_perm=True)
+    p = pls.MultitablePLSC(n_iters=10000, return_perm=False)
     alpha = .001
     latent_variable_check = []
     for index, x_table in enumerate(x_tables):
@@ -215,30 +215,33 @@ if __name__ == "__main__":
     for index, x_table in enumerate(x_tables):
         x_tables_jr = [x_table]
         print('%s: Running bootstrap testing on saliences' % pu.ctime())
-        res_boot = p.mult_plsc_bootstrap_saliences(y_tables, x_tables_jr, 5)
+        res_boot = p.mult_plsc_bootstrap_saliences(y_tables, x_tables_jr, 4)
     
         print('%s: Organizing behavior saliences' % pu.ctime())
-        y_saliences = mf.create_salience_subtables(
-                sals=res_boot['y_saliences'][:, :true_num_latent_vars],
-                dataframes=y_tables,
-                subtable_names=list(behavior_data),
-                latent_names=latent_names)
-    
+        y_saliences = res_boot['y_saliences'][:, :true_num_latent_vars]
+        y_saliences_tables = mf.create_salience_subtables(y_saliences, y_tables, list(behavior_data), latent_names)
+        
+        y_salience_z = sals=res_boot['zscores_y_saliences'][:, :num_latent_vars]
+        y_salience_ztables = mf.create_salience_subtables(y_salience_z, y_tables, list(behavior_data), latent_names)
+        
         print('%s: Averaging saliences within behavior categories' % pu.ctime())
         res_behavior = mf.average_behavior_scores(y_saliences, latent_names)
     
         print('%s: Organizing brain saliences' % pu.ctime())
         meg_subtable_name = 'meg_%s' % meg_sess[index]
         x_table_name = meg_subtable_name 
-        x_saliences = pd.DataFrame(res_boot['x_saliences'][:, :true_num_latent_vars],
-                                   index=rois,
-                                   columns=latent_names)
+        x_saliences = res_boot['x_saliences'][:, :true_num_latent_vars]
+        x_saliences_tables = pd.DataFrame(x_saliences, index=rois, columns=latent_names)
         
-        print('%s: Saving results' % pu.ctime())
+        x_salience_z = sals=res_boot['zscores_x_saliences'][:, :num_latent_vars]
+        x_saliences_ztables = pd.DataFrame(x_salience_z, index=rois, columns=latent_names)
+        
         output = {'permutation_tests':res_perm,
                   'bootstrap_tests':res_boot,
-                  'y_saliences':y_saliences,
-                  'x_saliences':x_saliences,
+                  'y_saliences':y_saliences_tables,
+                  'x_saliences':x_saliences_tables,
+                  'y_saliences_zscores':y_salience_ztables,
+                  'x_saliences_zscores':x_salience_ztables,
                   'behaviors':res_behavior}
         
         single_session_mPLSC[meg_subtable_name] = output
@@ -249,10 +252,10 @@ if __name__ == "__main__":
     print('%s: Running brain conjunctions' % pu.ctime())
     brain_conj = _x_conjunctions_single_session(single_session_mPLSC, latent_names, return_avg=True)
     
+    print('%s: Saving results' % pu.ctime())
     with open(pdir + '/data/mPLSC_power_per_session.pkl', 'wb') as file:
         single_session_mPLSC['behavior_conjunction'] = behavior_conj
         single_session_mPLSC['brain_conjunction'] = brain_conj
         pkl.dump(single_session_mPLSC, file)
-        
         
     print('%s: Finished' % pu.ctime())
