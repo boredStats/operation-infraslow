@@ -102,6 +102,8 @@ if __name__ == "__main__":
     behavior_data = mf.load_behavior_subtables(behavior_raw, behavior_metadata)
     y_tables = [behavior_data[category] for category in list(behavior_data)]
 
+    alpha = .0001
+    z_test = 5
     output_file = ddir + '/mPLSC/mPLSC_power_all_sessions.pkl'
     check = input('Run multitable PLS-C? y/n ')
     if check=='y':
@@ -110,32 +112,36 @@ if __name__ == "__main__":
         res_perm = p.mult_plsc_eigenperm(y_tables, x_tables)
 
         print('%s: Running bootstrap testing on saliences' % pu.ctime())
-        res_boot = p.mult_plsc_bootstrap_saliences(y_tables, x_tables, 4)
-
-        alpha = .001
+        res_boot = p.mult_plsc_bootstrap_saliences(y_tables, x_tables, z_test)
         num_latent_vars = len(np.where(res_perm['p_values'] < alpha)[0])
         latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
 
         print('%s: Organizing saliences' % pu.ctime())
-        y_sals, y_sals_z, x_sals, x_sals_z = mf.organize_saliences(
+        y_saliences, y_saliences_z = mf.organize_behavior_saliences(
             res_boot=res_boot,
             y_tables=y_tables,
+            sub_names=list(behavior_data),
+            num_latent_vars=num_latent_vars
+            )
+        x_saliences, x_saliences_z = mf.organize_brain_saliences(
+            res_boot=res_boot,
             x_tables=x_tables,
+            sub_names=['MEG_%s' % session for session in meg_sessions],
             num_latent_vars=num_latent_vars,
             )
         print('%s: Averaging saliences within behavior categories' % pu.ctime())
-        res_behavior = mf.average_behavior_scores(y_sals, latent_names)
+        res_behavior = mf.average_behavior_scores(y_saliences, latent_names)
 
         print('%s: Running conjunction analysis' % pu.ctime())
-        res_conj = _x_conjunctions(x_sals, latent_names, rois)
+        res_conj = _x_conjunctions(x_saliences, latent_names, rois)
 
         print('%s: Saving results' % pu.ctime())
         output = {'permutation_tests':res_perm,
                   'bootstrap_tests':res_boot,
-                  'y_saliences':y_sals,
-                  'x_saliences':x_sals,
-                  'y_saliences_zscores':y_sals_z,
-                  'x_saliences_zscores':x_sals_z,
+                  'y_saliences':y_saliences,
+                  'x_saliences':x_saliences,
+                  'y_saliences_zscores':y_saliences_z,
+                  'x_saliences_zscores':x_saliences_z,
                   'behaviors':res_behavior,
                   'conjunctions':res_conj}
 
@@ -145,91 +151,92 @@ if __name__ == "__main__":
         with open(output_file, 'rb') as file:
             output = pkl.load(file)
 
-            res_perm = output['permutation_tests']
-            res_boot = output['bootstrap_tests']
-            y_saliences = output['y_saliences']
-            y_saliences_z = output['y_saliences_zscores']
-            x_saliences = output['x_saliences']
-            x_saliences_z = output['x_saliences_zscores']
-            res_behavior = output['behaviors']
-            res_conj = output['conjunctions']
+        res_perm = output['permutation_tests']
+        res_boot = output['bootstrap_tests']
+        y_saliences = output['y_saliences']
+        y_saliences_z = output['y_saliences_zscores']
+        x_saliences = output['x_saliences']
+        x_saliences_z = output['x_saliences_zscores']
+        res_behavior = output['behaviors']
+        res_conj = output['conjunctions']
 
     fig_path = pdir + '/figures/mPLSC_power_all_sessions'
-    mf.save_xls(y_saliences, fig_path + '/behavior_saliences.xlsx')
-    mf.save_xls(x_saliences, fig_path+'/brain_saliences.xlsx')
-
-    behavior_categories = list(y_saliences)
-    y_squared_sals = {}
-    for cat in behavior_categories:
-        df = y_saliences[cat]
-        y_squared_sals[cat] = df**2
-    mf.save_xls(y_squared_sals, fig_path+'/behavior_saliences_squared.xlsx')
-
-    sessions = list(x_saliences)
-    x_squared_sals = {}
-    for sess in sessions:
-        df = x_saliences[sess]
-        x_squared_sals[sess] = df**2
-    mf.save_xls(x_squared_sals, fig_path+'/brain_saliences_squared.xlsx')
-
-    alpha = .001
-    num_latent_vars = len(np.where(res_perm['p_values'] < alpha)[0])
-    latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
+    # mf.save_xls(y_saliences, fig_path + '/behavior_saliences.xlsx')
+    # mf.save_xls(x_saliences, fig_path+'/brain_saliences.xlsx')
+    #
+    # behavior_categories = list(y_saliences)
+    # y_squared_saliences = {}
+    # for cat in behavior_categories:
+    #     df = y_saliences[cat]
+    #     y_squared_saliences[cat] = df**2
+    # mf.save_xls(y_squared_saliences, fig_path+'/behavior_saliences_squared.xlsx')
+    #
+    # sessions = list(x_saliences)
+    # x_squared_saliences = {}
+    # for sess in sessions:
+    #     df = x_saliences[sess]
+    #     x_squared_saliences[sess] = df**2
+    # mf.save_xls(x_squared_saliences, fig_path+'/brain_saliences_squared.xlsx')
+    #
+    # num_latent_vars = len(np.where(res_perm['p_values'] < alpha)[0])
+    # latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
 
     print('%s: Plotting scree' % pu.ctime())
     mf.plotScree(res_perm['true_eigenvalues'],
                  res_perm['p_values'],
                  alpha=alpha,
-                 fname=fig_path + '/scree.png')
+                 fname=fig_path+'/scree.png')
 
-    y_summed_squared_saliences = pd.DataFrame(
-        index=behavior_categories,
-        columns=latent_names
-        )
-    max_vals = []
-    for c, cat in enumerate(behavior_categories):
-        df = y_squared_saliences[cat]
-        sums = np.sum(df.values, axis=0)
-        y_summed_squared_saliences.iloc[c] = sums
-        max_vals.append(np.max(sums))
-    max_val = np.max(max_vals)
+    # y_summed_squared_saliences = pd.DataFrame(
+    #     index=behavior_categories,
+    #     columns=latent_names
+    #     )
+    #
+    # max_vals = []
+    # for c, cat in enumerate(behavior_categories):
+    #     df = y_squared_saliences[cat]
+    #     sums = np.sum(df.values, axis=0)
+    #     y_summed_squared_saliences.iloc[c] = sums
+    #     max_vals.append(np.max(sums))
+    # max_val = np.max(max_vals)
 
-    print('%s: Creating radar plots' % pu.ctime())
-    for name in latent_names:
-        fname = fig_path + '/behavior_summed_%s.png' % name
-        series = y_summed_squared_saliences[name]
-        mf.plot_radar2(
-            series,
-            max_val=.5,
-            choose=False,
-            separate_neg=False,
-            fname=fname
-            )
+    # print('%s: Creating radar plots' % pu.ctime())
+    # for name in latent_names:
+    #     fname = fig_path + '/behavior_summed_%s.png' % name
+    #     series = y_summed_squared_saliences[name]
+    #     mf.plot_radar2(
+    #         series,
+    #         max_val=.5,
+    #         choose=False,
+    #         separate_neg=False,
+    #         fname=fname
+    #         )
 
-    print('%s: Creating brain figures' % pu.ctime())
-    maxval = get_highest_squared_brain_salience(res_conj, latent_names)
-    print('Max salience is %.3f' % maxval)
-    for name in latent_names:
-        mags = res_conj[name].values **2
-        bin_mags = []
-        for m in mags:
-            if m > 0:
-                bin_mags.append(1)
-            else:
-                bin_mags.append(0)
-
-        fname = fig_path + '/brain_binarized_%s.png' % name
-        custom_roi = mf.create_custom_roi(roi_path, rois, bin_mags)
-        minval = np.min(mags[np.nonzero(mags)])
-        if len(np.nonzero(mags)) == 1:
-            minval = None
-        mf.plot_brain_saliences(custom_roi, minval, maxval, figpath=fname)
-
-        fname = fig_path + '/brain_%s.png' % name
-        custom_roi = mf.create_custom_roi(roi_path, rois, mags)
-        minval = np.min(mags[np.nonzero(mags)])
-        if len(np.nonzero(mags)) == 1:
-            minval = None
-        mf.plot_brain_saliences(custom_roi, minval, maxval, figpath=fname)
+    # roi_path = ddir + '/glasser_atlas/'
+    # print('%s: Creating brain figures' % pu.ctime())
+    # maxval = get_highest_squared_brain_salience(res_conj, latent_names)
+    # print('Max salience is %.3f' % maxval)
+    # for name in latent_names:
+    #     mags = res_conj[name].values **2
+    #     bin_mags = []
+    #     for m in mags:
+    #         if m > 0:
+    #             bin_mags.append(1)
+    #         else:
+    #             bin_mags.append(0)
+    #
+    #     fname = fig_path + '/brain_binarized_%s.png' % name
+    #     custom_roi = mf.create_custom_roi(roi_path, rois, bin_mags)
+    #     minval = np.min(mags[np.nonzero(mags)])
+    #     if len(np.nonzero(mags)) == 1:
+    #         minval = None
+    #     mf.plot_brain_saliences(custom_roi, minval, maxval, figpath=fname)
+    #
+    #     fname = fig_path + '/brain_%s.png' % name
+    #     custom_roi = mf.create_custom_roi(roi_path, rois, mags)
+    #     minval = np.min(mags[np.nonzero(mags)])
+    #     if len(np.nonzero(mags)) == 1:
+    #         minval = None
+    #     mf.plot_brain_saliences(custom_roi, minval, maxval, figpath=fname)
 
     print('%s: Finished' % pu.ctime())
