@@ -556,7 +556,7 @@ def plot_brain_saliences(custom_roi, minval, maxval=None, figpath=None):
 def plot_bar(series, fname=None):
     def _create_colors(series):
         blue = 'xkcd:azure'#np.divide([53, 102, 201], 256)
-        red = 'xkcd:orangered'#np.divide([219,56,33], 256)
+        red = 'xkcd:red'#np.divide([219,56,33], 256)
 
         signs = np.sign(series.values)
         colors = [blue for n in range(len(signs))]
