@@ -59,11 +59,11 @@ behavior_raw = pd.read_excel(pdir + '/data/hcp_behavioral.xlsx',
 behavior_tables = mf.load_behavior_subtables(behavior_raw, behavior_metadata)
 y_tables = [behavior_tables[t] for t in list(behavior_tables)]
 
-p = pls_tools.MultitablePLSC(n_iters=1000)
+p = pls_tools.MultitablePLSC(n_iters=10000)
 print('%s: Running permutation testing on latent variables' % pu.ctime())
 res_perm = p.mult_plsc_eigenperm(y_tables, x_tables)
 print('%s: Running bootstrap testing on saliences' % pu.ctime())
-res_boot = p.mult_plsc_bootstrap_saliences(y_tables, x_tables, 3)
+res_boot = p.mult_plsc_bootstrap_saliences(y_tables, x_tables, 4)
 
 print('%s: Plotting scree' % pu.ctime())   
 mf.plotScree(res_perm['true_eigenvalues'],
@@ -71,7 +71,7 @@ mf.plotScree(res_perm['true_eigenvalues'],
              alpha=.001,
              fname=fig_path + '/scree.png')
 
-num_latent_vars = 6#len(np.where(res_perm['p_values'] < .001)[0])
+num_latent_vars = len(np.where(res_perm['p_values'] < .001)[0])
 latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
 
 y_saliences = mf.create_salience_subtables(
