@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 import matplotlib as mpl
+import seaborn as sns
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from nilearn import surface, plotting, datasets
@@ -121,36 +122,39 @@ def create_salience_subtables(sals, dataframes, subtable_names, latent_names):
 
     return salience_subtables
 
-def organize_saliences(res_boot, y_tables, x_tables, num_latent_vars):
+def organize_behavior_saliences(res_boot, y_tables, sub_names, num_latent_vars):
     latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
     y_sals = create_salience_subtables(
         sals=res_boot['y_saliences'][:, :num_latent_vars],
         dataframes=y_tables,
-        subtable_names=list(behavior_data),
+        subtable_names=sub_names,
         latent_names=latent_names
         )
     y_sals_z = create_salience_subtables(
         sals=res_boot['zscores_y_saliences'][:, :num_latent_vars],
         dataframes=y_tables,
-        subtable_names=list(behavior_data),
+        subtable_names=sub_names,
         latent_names=latent_names
         )
+    return y_sals, y_sals_z
 
+def organize_brain_saliences(res_boot, x_tables, sub_names, num_latent_vars):
+    latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
     x_sals = create_salience_subtables(
         sals=res_boot['x_saliences'][:, :num_latent_vars],
         dataframes=x_tables,
-        subtable_names=['MEG_%s' % session for session in meg_sessions],
+        subtable_names=sub_names,
         latent_names=latent_names
         )
     x_sals_z = create_salience_subtables(
         sals=res_boot['zscores_x_saliences'][:, :num_latent_vars],
         dataframes=x_tables,
-        subtable_names=['MEG_%s' % session for session in meg_sessions],
+        subtable_names=sub_names,
         latent_names=latent_names
         )
-    return y_sals, y_sals_z, x_sals, x_sals_z
+    return x_sals, x_sals_z
 
-def conjunction_analysis(brains, compare='any', return_avg=False):
+def conjunction_analysis(data, compare='any', thresh=0, return_avg=False):
     """
     Run a sort of conjunction analysis between brain tables to
     find common loadings between subtables for a given latent variable
@@ -175,41 +179,167 @@ def conjunction_analysis(brains, compare='any', return_avg=False):
         Otherwise, returns a pandas df of length N with bools
     """
 
-    cpr, avg = [], []
-    for r, row in enumerate(brains.index):
-        vals = brains.values[r, :]
+    conjunction = [0 for row in data.index]
+    for r, row in enumerate(data.index):
+        vals = data.loc[row]
         if compare == 'any':
-            if all(vals):
-                cpr.append(True)
-                avg.append(np.mean(vals))
-            else:
-                cpr.append(False)
-                avg.append(0)
+            if all(vals) and all(np.abs(vals) > thresh):
+                if return_avg:
+                    conjunction[r] = np.mean(vals)
+                else:
+                    conjunction[r] = 1
+
         elif compare == 'sign':
-            signs = np.sign(vals)
-            if all(signs > 0) or all(signs < 0):
-                cpr.append(True)
-                avg.append(np.mean(vals))
-            else:
-                cpr.append(False)
-                avg.append(0)
+            if all(np.abs(vals) > thresh):
+                if all(np.sign(vals) > 0) or all(np.sign(vals) < 0):
+                    if return_avg:
+                        conjunction[r] = np.mean(vals)
+                    else:
+                        conjunction[r] = 1
 
-    if not return_avg:
-        return pd.DataFrame(cpr, index=brains.index)
-    else:
-        return pd.DataFrame(avg, index=brains.index)
+        return pd.DataFrame(
+            conjunction,
+            index=data.index,
+            columns=['conjunction_test']
+            )
 
-def average_behavior_scores(y_saliences, latent_variable_names):
-    """Calculate the average salience of a behavioral category"""
+def behavior_conjunctions(session_behavior_saliences, thresh=0):
+    """
+    Run conjunctions over sessions for multiple tables at once
 
-    keys = list(y_saliences)
-    avg_sals = np.ndarray(shape=(len(keys), len(latent_variable_names)))
-    for l, latent_name in enumerate(latent_variable_names):
-        for k, key in enumerate(keys):
-            behavior_saliences = y_saliences[key]
-            avg_sals[k, l] = np.mean(behavior_saliences[latent_name])
+    Used for the behavior side of the mPLSC equation, or for the
+        phase-amplitude coupling side of the equation
 
-    return pd.DataFrame(avg_sals, index=keys, columns=latent_variable_names)
+    Structure of the input:
+    saliences - dictionary with sessions as keys
+    behavior_dict - dictionary with behavior categories (or band name in the
+        case of phase-amplitude coupling) as keys
+    behavior_df - dataframe (rows=behaviors/ROIs, cols=latent variables)
+
+    This function iteratively builds a dataframe where rows are the behaviors
+        or ROIs, and columns are session latent variables. A conjunction is
+        run on this dataframe, then saved to an output dataframe
+    Ex:
+            Session1_LV Session2_LV Session3_LV
+        B1      #           #           #
+        B2      #           #           #
+        .       #           #           #
+        .       #           #           #
+        .       #           #           #
+        Bn      #           #           #
+
+
+    Save these results in a dictionary with behavior categories or band names
+        as keys
+    """
+    #Getting metadata
+    meg_sessions = list(session_behavior_saliences)
+    template_dict = session_behavior_saliences[meg_sessions[0]]
+    categories = list(template_dict)
+    template_df = template_dict[categories[0]]
+    latent_names = list(template_df)
+    behaviors_in_category = []
+    for category in categories:
+        template_df = template_dict[category]
+        behaviors = template_df.index
+        behaviors_in_category.append(behaviors)
+
+    output = {}
+    for c, category in enumerate(categories):
+        behaviors = behaviors_in_category[c]
+        # conjunction_res_shape = (len(behaviors), len(latent_names))
+        conjunction_res = pd.DataFrame(index=behaviors, columns=latent_names)#np.ndarray(shape=conjunction_res_shape)
+        for l, latent_variable in enumerate(latent_names):
+            conjunction_data = []
+
+            for session in meg_sessions:
+                behavior_dict = session_behavior_saliences[session]
+                behavior_df = behavior_dict[category]
+                session_LV = behavior_df[latent_variable]
+                conjunction_data.append(session_LV)
+
+            conjunction_df = pd.DataFrame(
+                np.asarray(conjunction_data).T,
+                index=behavior_df.index,
+                columns=meg_sessions
+                )
+            res_conj = conjunction_analysis(
+                conjunction_df,
+                compare='sign',
+                thresh=thresh,
+                return_avg=True
+                ).values
+
+            conjunction_res[latent_variable] = np.ndarray.flatten(res_conj)
+
+        category_conjunction_res = pd.DataFrame(
+            conjunction_res,
+            index=behavior_df.index,
+            columns=latent_names
+            )
+        output[category] = category_conjunction_res
+
+    return output
+
+def single_table_conjunction(saliences_dict, thresh=0):
+    """
+    Run a conjunction between sessions over a single table
+
+    Used for the power-per-session analysis, where the MEG sessions
+        were run independently
+
+    Returns a single dataframe, as opposed to a dict of dataframes
+    """
+    meg_sessions = list(saliences_dict)
+    template_df = saliences_dict[meg_sessions[0]]
+    row_names = template_df.index
+    latent_names = list(template_df)
+
+    conjunction_res = pd.DataFrame(index=row_names, columns=latent_names)
+    for latent_variable in latent_names:
+        conjunction_data_shape = (len(row_names), len(meg_sessions))
+        conjunction_data = np.ndarray(shape=conjunction_data_shape)
+
+        for s, session in enumerate(meg_sessions):
+            session_df = saliences_dict[session]
+            session_LV = session_df[latent_variable]
+            conjunction_data[:, s] = session_LV.values
+
+        conjunction_df = pd.DataFrame(
+            conjunction_data,
+            index=row_names,
+            columns=meg_sessions
+            )
+
+        res_conj = conjunction_analysis(
+            conjunction_df,
+            compare='sign',
+            thresh=thresh,
+            return_avg=True
+            ).values
+
+        conjunction_res[latent_variable] = np.ndarray.flatten(res_conj)
+
+    return conjunction_res
+
+def average_subtable_saliences(salience_dict):
+    """
+    Calculate the average salience values for each subtable
+
+    Used in the behavior side of mPLSC to get the average salience
+        value of a behavioral category
+    """
+    categories = list(salience_dict)
+    template_df = salience_dict[categories[0]]
+    latent_names = list(template_df)
+
+    output_df = pd.DataFrame(index=categories, columns=latent_names)
+    for category in categories:
+        salience_df = salience_dict[category]
+        average_saliences = np.mean(salience_df.values, axis=0)
+        output_df.loc[category] = average_saliences
+
+    return output_df
 
 def plotScree(eigs, pvals=None, alpha=.05, percent=True, kaiser=False, fname=None):
     """
@@ -423,9 +553,32 @@ def plot_brain_saliences(custom_roi, minval, maxval=None, figpath=None):
                 colorbar=False)
     plt.clf()
 
-def plot_bar(series):
-    x = np.arange(1, len(series))
-    fig, ax = plt.bar(x, series.values)
+def plot_bar(series, fname=None):
+    def _create_colors(series):
+        blue = 'xkcd:azure'#np.divide([53, 102, 201], 256)
+        red = 'xkcd:orangered'#np.divide([219,56,33], 256)
+
+        signs = np.sign(series.values)
+        colors = [blue for n in range(len(signs))]
+        for s, sign in enumerate(signs):
+            if sign > 0:
+                colors[s] = red
+
+        return colors
+
+    sns.set()
+    #sns.set_style("whitegrid")#, {"axes.facecolor": ".3", "grid.color": ".4"})
+    colors = _create_colors(series)
+    # print(colors)
+    x = np.arange(len(series))
+    fig, ax = plt.subplots()
+    plt.bar(x, series, color=colors)
+    ax.set_xticks(x)
+    ax.set_xticklabels(series.index)
+    if fname is not None:
+        fig.savefig(fname)
+    plt.show()
+
 
 def save_xls(dict_df, path):
     """
