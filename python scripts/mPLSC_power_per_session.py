@@ -107,6 +107,7 @@ if __name__ == "__main__":
     z = 0
     output_file = ddir + '/mPLSC/mPLSC_power_per_session.pkl'
     fig_path = pdir + '/figures/mPLSC_power_per_session'
+    roi_path = ddir + '/glasser_atlas/'
 
     check = input('Run multitable PLS-C? y/n')
     if check=='y':
@@ -151,13 +152,13 @@ if __name__ == "__main__":
             num_latent_vars = len(np.where(res_perm['p_values'] < alpha)[0])
             significant_latent_variables.append(num_latent_vars)
 
-            # print('%s: Plotting scree' % pu.ctime())
-            # mf.plotScree(
-            #     eigs=res_perm['true_eigenvalues'],
-            #     pvals=res_perm['p_values'],
-            #     alpha=alpha,
-            #     fname=fig_path + '/scree_%s.png' % meg_sessions[index]
-            #     )
+            print('%s: Plotting scree' % pu.ctime())
+            mf.plotScree(
+                eigs=res_perm['true_eigenvalues'],
+                pvals=res_perm['p_values'],
+                alpha=alpha,
+                fname=fig_path + '/scree_%s.png' % meg_sessions[index]
+                )
 
         best_num = np.min(significant_latent_variables)
         latent_names = ['LatentVar%d' % (n+1) for n in range(best_num)]
@@ -211,20 +212,20 @@ if __name__ == "__main__":
         with open(output_file, 'rb') as file:
             single_session_mPLSC = pkl.load(file)
 
-    z_thresh = 1
-    session_behavior_z_saliences, session_brain_z_saliences = {}, {}
+    session_behavior_saliences, session_brain_saliences = {}, {}
+    session_behavior_z, session_brain_z = {}, {}
     for session in meg_sessions:
         session_dict = single_session_mPLSC[session]
+        session_behavior_saliences[session] = session_dict['y_saliences']
+        session_behavior_z[session] = session_dict['y_saliences_zscores']
 
-        y_saliences_dict = session_dict['y_saliences_zscores']
-        session_behavior_z_saliences[session] = y_saliences_dict
-
-        x_saliences = session_dict['x_saliences_zscores']
-        session_brain_z_saliences[session] = x_saliences
+        session_brain_saliences[session] = session_dict['x_saliences']
+        session_brain_z[session] = session_dict['x_saliences_zscores']
 
     print('%s: Running conjunction on behavior data' % pu.ctime())
+    z_thresh = 1
     behavior_conjunctions = mf.behavior_conjunctions(
-        session_behavior_z_saliences,
+        session_behavior_z,
         thresh=z_thresh
         )
     mf.save_xls(behavior_conjunctions, fig_path+'/behavior_conjunction_z.xlsx')
@@ -235,7 +236,7 @@ if __name__ == "__main__":
 
     print('%s: Running conjunction on brain data' % pu.ctime())
     brain_conjunctions = mf.single_table_conjunction(
-        session_brain_z_saliences,
+        session_brain_z,
         thresh=z_thresh
         )
     mf.save_xls({'z':brain_conjunctions}, fig_path+'/brain_conjunction_z.xlsx')
@@ -243,17 +244,28 @@ if __name__ == "__main__":
     print('%s: Plotting behavior bar plots' % pu.ctime())
     num_latent_vars = len(list(behavior_avg))
     latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
-    series = behavior_avg[latent_names[0]]
-    print(series)
-    series2 = pd.Series(
-        np.random.randint(-5, 5, (len(series))),
-        index=series.index
-        )
-    mf.plot_bar(series2, fig_path+'/test.png')
+    for latent_variable in latent_names:
+        series = behavior_avg[latent_variable]
+        # mf.plot_bar(series, fig_path+'/behavior_z_%s.png' % latent_variable)
 
+        series2 = pd.Series(
+            np.random.randint(-5, 5, (len(series))),
+            index=series.index
+            )
+        mf.plot_bar(series2, fig_path+'/test.png')
+        break
 
+    print('%s: Plotting brain pictures' % pu.ctime())
+    for latent_variable in latent_names:
+        mags = brain_conjunctions[latent_variable]
+        fname = fig_path + '/brain_z_%s.png' % name
 
+        custom_roi = mf.create_custom_roi(roi_path, rois, mags)
 
+        minval = np.min(mags[np.nonzero(mags)])
+        if len(np.nonzero(mags)) == 1:
+            minval = None
 
+        mf.plot_brain_saliences(custom_roi, minval, figpath=fname)
 
     print('%s: Finished' % pu.ctime())
