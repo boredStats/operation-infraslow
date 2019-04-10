@@ -102,8 +102,8 @@ if __name__ == "__main__":
     behavior_data = mf.load_behavior_subtables(behavior_raw, behavior_metadata)
     y_tables = [behavior_data[category] for category in list(behavior_data)]
 
-    alpha = .0001
-    z_test = 5
+    alpha = .001
+    z_test = 0
     output_file = ddir + '/mPLSC/mPLSC_power_all_sessions.pkl'
     check = input('Run multitable PLS-C? y/n ')
     if check=='y':
@@ -161,25 +161,14 @@ if __name__ == "__main__":
         res_conj = output['conjunctions']
 
     fig_path = pdir + '/figures/mPLSC_power_all_sessions'
-    # mf.save_xls(y_saliences, fig_path + '/behavior_saliences.xlsx')
-    # mf.save_xls(x_saliences, fig_path+'/brain_saliences.xlsx')
-    #
-    # behavior_categories = list(y_saliences)
-    # y_squared_saliences = {}
-    # for cat in behavior_categories:
-    #     df = y_saliences[cat]
-    #     y_squared_saliences[cat] = df**2
-    # mf.save_xls(y_squared_saliences, fig_path+'/behavior_saliences_squared.xlsx')
-    #
-    # sessions = list(x_saliences)
-    # x_squared_saliences = {}
-    # for sess in sessions:
-    #     df = x_saliences[sess]
-    #     x_squared_saliences[sess] = df**2
-    # mf.save_xls(x_squared_saliences, fig_path+'/brain_saliences_squared.xlsx')
-    #
-    # num_latent_vars = len(np.where(res_perm['p_values'] < alpha)[0])
-    # latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
+    mf.save_xls(y_saliences, fig_path + '/behavior_saliences.xlsx')
+    mf.save_xls(x_saliences, fig_path+'/brain_saliences.xlsx')
+
+    mf.save_xls(y_saliences_z, fig_path+'/behavior_saliences_z.xlsx')
+    mf.save_xls(x_saliences_z, fig_path+'/brain_saliences_z.xlsx')
+
+    num_latent_vars = len(np.where(res_perm['p_values'] < alpha)[0])
+    latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
 
     print('%s: Plotting scree' % pu.ctime())
     mf.plotScree(res_perm['true_eigenvalues'],
@@ -187,30 +176,12 @@ if __name__ == "__main__":
                  alpha=alpha,
                  fname=fig_path+'/scree.png')
 
-    # y_summed_squared_saliences = pd.DataFrame(
-    #     index=behavior_categories,
-    #     columns=latent_names
-    #     )
-    #
-    # max_vals = []
-    # for c, cat in enumerate(behavior_categories):
-    #     df = y_squared_saliences[cat]
-    #     sums = np.sum(df.values, axis=0)
-    #     y_summed_squared_saliences.iloc[c] = sums
-    #     max_vals.append(np.max(sums))
-    # max_val = np.max(max_vals)
+    z_thresh = 4
+    print('%s: Running conjunction on behavior data' % pu.ctime())
+    behavior_conjunction = mf.behavior_conjunctions(y_saliences_z, z_thresh)
 
-    # print('%s: Creating radar plots' % pu.ctime())
-    # for name in latent_names:
-    #     fname = fig_path + '/behavior_summed_%s.png' % name
-    #     series = y_summed_squared_saliences[name]
-    #     mf.plot_radar2(
-    #         series,
-    #         max_val=.5,
-    #         choose=False,
-    #         separate_neg=False,
-    #         fname=fname
-    #         )
+    print('%s: Running conjunction on brain data' % pu.ctime())
+    brain_conjunction = mf.behavior_conjunction(x_saliences_z, z_thresh)
 
     # roi_path = ddir + '/glasser_atlas/'
     # print('%s: Creating brain figures' % pu.ctime())
