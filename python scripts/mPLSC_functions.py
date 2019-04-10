@@ -577,7 +577,7 @@ def plot_bar(series, fname=None):
     ax.set_xticklabels(series.index)
     if fname is not None:
         fig.savefig(fname)
-    plt.show()
+    plt.clf()
 
 
 def save_xls(dict_df, path):
