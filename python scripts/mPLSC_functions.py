@@ -303,7 +303,7 @@ def single_table_conjunction(saliences_dict, thresh=0):
         for s, session in enumerate(meg_sessions):
             session_df = saliences_dict[session]
             session_LV = session_df[latent_variable]
-            conjunction_data[:, s] = session_LV.values
+            conjunction_data[:, s] = np.abs(session_LV.values)
 
         conjunction_df = pd.DataFrame(
             conjunction_data,
