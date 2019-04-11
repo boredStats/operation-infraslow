@@ -197,13 +197,13 @@ def conjunction_analysis(data, compare='any', thresh=0, return_avg=False):
                     else:
                         conjunction[r] = 1
 
-        return pd.DataFrame(
-            conjunction,
-            index=data.index,
-            columns=['conjunction_test']
-            )
+    return pd.DataFrame(
+        conjunction,
+        index=data.index,
+        columns=['conjunction_test']
+        )
 
-def behavior_conjunctions(session_behavior_saliences, thresh=0):
+def behavior_conjunctions(session_behavior_saliences, comp='any', thresh=0):
     """
     Run conjunctions over sessions for multiple tables at once
 
@@ -255,7 +255,9 @@ def behavior_conjunctions(session_behavior_saliences, thresh=0):
             for session in meg_sessions:
                 behavior_dict = session_behavior_saliences[session]
                 behavior_df = behavior_dict[category]
-                session_LV = behavior_df[latent_variable]
+                session_LV = behavior_df[latent_variable].values
+                if comp=='any':
+                    session_LV = np.abs(session_LV)
                 conjunction_data.append(session_LV)
 
             conjunction_df = pd.DataFrame(
@@ -265,7 +267,7 @@ def behavior_conjunctions(session_behavior_saliences, thresh=0):
                 )
             res_conj = conjunction_analysis(
                 conjunction_df,
-                compare='sign',
+                compare=comp,
                 thresh=thresh,
                 return_avg=True
                 ).values
@@ -281,7 +283,7 @@ def behavior_conjunctions(session_behavior_saliences, thresh=0):
 
     return output
 
-def single_table_conjunction(saliences_dict, thresh=0):
+def single_table_conjunction(saliences_dict, comp='any', thresh=0):
     """
     Run a conjunction between sessions over a single table
 
@@ -302,8 +304,10 @@ def single_table_conjunction(saliences_dict, thresh=0):
 
         for s, session in enumerate(meg_sessions):
             session_df = saliences_dict[session]
-            session_LV = session_df[latent_variable]
-            conjunction_data[:, s] = np.abs(session_LV.values)
+            session_LV = session_df[latent_variable].values
+            if comp=='any':
+                session_LV = np.abs(session_LV)
+            conjunction_data[:, s] = session_LV
 
         conjunction_df = pd.DataFrame(
             conjunction_data,
@@ -313,16 +317,16 @@ def single_table_conjunction(saliences_dict, thresh=0):
 
         res_conj = conjunction_analysis(
             conjunction_df,
-            compare='sign',
+            compare=comp,
             thresh=thresh,
-            return_avg=False
+            return_avg=True
             ).values
 
         conjunction_res[latent_variable] = np.ndarray.flatten(res_conj)
 
     return conjunction_res
 
-def average_subtable_saliences(salience_dict):
+def average_subtable_saliences(salience_dict, make_abs=True):
     """
     Calculate the average salience values for each subtable
 
@@ -336,7 +340,10 @@ def average_subtable_saliences(salience_dict):
     output_df = pd.DataFrame(index=categories, columns=latent_names)
     for category in categories:
         salience_df = salience_dict[category]
-        average_saliences = np.mean(salience_df.values, axis=0)
+        salience_vals = salience_df.values
+        if make_abs:
+            salience_vals = np.abs(salience_vals)
+        average_saliences = np.mean(salience_vals, axis=0)
         output_df.loc[category] = average_saliences
 
     return output_df
@@ -517,7 +524,7 @@ def create_custom_roi(roi_path, rois_to_combine, roi_magnitudes):
     nifti = nib.Nifti1Image(template, t_vol.affine, t_vol.header)
     return nifti
 
-def plot_brain_saliences(custom_roi, minval, maxval=None, figpath=None):
+def plot_brain_saliences(custom_roi, minval=0, maxval=None, figpath=None):
     mpl.rcParams.update(mpl.rcParamsDefault)
     fsaverage = datasets.fetch_surf_fsaverage()
     orders = [('medial', 'left'), ('medial', 'right'),
