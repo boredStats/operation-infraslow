@@ -315,7 +315,7 @@ def single_table_conjunction(saliences_dict, thresh=0):
             conjunction_df,
             compare='sign',
             thresh=thresh,
-            return_avg=True
+            return_avg=False
             ).values
 
         conjunction_res[latent_variable] = np.ndarray.flatten(res_conj)
@@ -518,6 +518,7 @@ def create_custom_roi(roi_path, rois_to_combine, roi_magnitudes):
     return nifti
 
 def plot_brain_saliences(custom_roi, minval, maxval=None, figpath=None):
+    mpl.rcParams.update(mpl.rcParamsDefault)
     fsaverage = datasets.fetch_surf_fsaverage()
     orders = [('medial', 'left'), ('medial', 'right'),
              ('lateral', 'left'), ('lateral', 'right')]
