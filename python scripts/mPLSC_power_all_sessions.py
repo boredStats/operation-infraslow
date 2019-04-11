@@ -72,41 +72,41 @@ if __name__ == "__main__":
     mri_subj, mri_sess = pdObj.get_mri_metadata()
     subject_overlap = [s for s in mri_subj if s in meg_subj]
 
-    print('%s: Building subtables of power data for MEG' % pu.ctime())
-    meg_data = mf.extract_average_power(
-        hdf5_file=ddir+'/downsampled_MEG_truncated.hdf5',
-        sessions=meg_sessions,
-        subjects=subject_overlap,
-        rois=rois,
-        image_type='MEG',
-        bp=True
-        )
-    x_tables = [meg_data[session] for session in list(meg_data)]
-
-    print('%s: Building subtables of behavior data' % pu.ctime())
-    behavior_metadata = pd.read_csv(
-        ddir+'/b_variables_mPLSC.txt',
-        delimiter='\t',
-        header=None
-        )
-    behavior_metadata.rename(
-        dict(zip([0, 1], ['category','name'])),
-        axis='columns',
-        inplace=True
-        )
-    behavior_raw = pd.read_excel(
-        ddir+'/hcp_behavioral.xlsx',
-        index_col=0,
-        sheet_name='cleaned'
-        )
-    behavior_data = mf.load_behavior_subtables(behavior_raw, behavior_metadata)
-    y_tables = [behavior_data[category] for category in list(behavior_data)]
-
     alpha = .001
     z_test = 0
     output_file = ddir + '/mPLSC/mPLSC_power_all_sessions.pkl'
     check = input('Run multitable PLS-C? y/n ')
     if check=='y':
+        print('%s: Building subtables of power data for MEG' % pu.ctime())
+        meg_data = mf.extract_average_power(
+            hdf5_file=ddir+'/downsampled_MEG_truncated.hdf5',
+            sessions=meg_sessions,
+            subjects=subject_overlap,
+            rois=rois,
+            image_type='MEG',
+            bp=True
+            )
+        x_tables = [meg_data[session] for session in list(meg_data)]
+
+        print('%s: Building subtables of behavior data' % pu.ctime())
+        behavior_metadata = pd.read_csv(
+            ddir+'/b_variables_mPLSC.txt',
+            delimiter='\t',
+            header=None
+            )
+        behavior_metadata.rename(
+            dict(zip([0, 1], ['category','name'])),
+            axis='columns',
+            inplace=True
+            )
+        behavior_raw = pd.read_excel(
+            ddir+'/hcp_behavioral.xlsx',
+            index_col=0,
+            sheet_name='cleaned'
+            )
+        behavior_data = mf.load_behavior_subtables(behavior_raw, behavior_metadata)
+        y_tables = [behavior_data[category] for category in list(behavior_data)]
+
         p = pls.MultitablePLSC(n_iters=10000, return_perm=False)
         print('%s: Running permutation tests on latent variables' % pu.ctime())
         res_perm = p.mult_plsc_eigenperm(y_tables, x_tables)
@@ -129,11 +129,6 @@ if __name__ == "__main__":
             sub_names=['MEG_%s' % session for session in meg_sessions],
             num_latent_vars=num_latent_vars,
             )
-        print('%s: Averaging saliences within behavior categories' % pu.ctime())
-        res_behavior = mf.average_behavior_scores(y_saliences, latent_names)
-
-        print('%s: Running conjunction analysis' % pu.ctime())
-        res_conj = _x_conjunctions(x_saliences, latent_names, rois)
 
         print('%s: Saving results' % pu.ctime())
         output = {'permutation_tests':res_perm,
@@ -141,9 +136,8 @@ if __name__ == "__main__":
                   'y_saliences':y_saliences,
                   'x_saliences':x_saliences,
                   'y_saliences_zscores':y_saliences_z,
-                  'x_saliences_zscores':x_saliences_z,
-                  'behaviors':res_behavior,
-                  'conjunctions':res_conj}
+                  'x_saliences_zscores':x_saliences_z
+                  }
 
         with open(output_file, 'wb') as file:
             pkl.dump(output, file)
@@ -157,8 +151,6 @@ if __name__ == "__main__":
         y_saliences_z = output['y_saliences_zscores']
         x_saliences = output['x_saliences']
         x_saliences_z = output['x_saliences_zscores']
-        res_behavior = output['behaviors']
-        res_conj = output['conjunctions']
 
     fig_path = pdir + '/figures/mPLSC_power_all_sessions'
     mf.save_xls(y_saliences, fig_path + '/behavior_saliences.xlsx')
@@ -176,13 +168,10 @@ if __name__ == "__main__":
                  alpha=alpha,
                  fname=fig_path+'/scree.png')
 
-    z_thresh = 4
-    print('%s: Running conjunction on behavior data' % pu.ctime())
-    behavior_conjunction = mf.behavior_conjunctions(y_saliences_z, z_thresh)
-
+    z_thresh = 1
     print('%s: Running conjunction on brain data' % pu.ctime())
-    brain_conjunction = mf.behavior_conjunction(x_saliences_z, z_thresh)
-
+    brain_conjunction = mf.single_table_conjunction(x_saliences_z, z_thresh)
+    brain_conjunction.to_excel(fig_path+'/brain_conjunction.xlsx')
     # roi_path = ddir + '/glasser_atlas/'
     # print('%s: Creating brain figures' % pu.ctime())
     # maxval = get_highest_squared_brain_salience(res_conj, latent_names)
