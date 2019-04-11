@@ -168,35 +168,26 @@ if __name__ == "__main__":
                  alpha=alpha,
                  fname=fig_path+'/scree.png')
 
-    z_thresh = 1
     print('%s: Running conjunction on brain data' % pu.ctime())
-    brain_conjunction = mf.single_table_conjunction(x_saliences_z, z_thresh)
+    brain_conjunction = mf.single_table_conjunction(x_saliences_z, thresh=4)
     brain_conjunction.to_excel(fig_path+'/brain_conjunction.xlsx')
-    # roi_path = ddir + '/glasser_atlas/'
-    # print('%s: Creating brain figures' % pu.ctime())
-    # maxval = get_highest_squared_brain_salience(res_conj, latent_names)
-    # print('Max salience is %.3f' % maxval)
-    # for name in latent_names:
-    #     mags = res_conj[name].values **2
-    #     bin_mags = []
-    #     for m in mags:
-    #         if m > 0:
-    #             bin_mags.append(1)
-    #         else:
-    #             bin_mags.append(0)
-    #
-    #     fname = fig_path + '/brain_binarized_%s.png' % name
-    #     custom_roi = mf.create_custom_roi(roi_path, rois, bin_mags)
-    #     minval = np.min(mags[np.nonzero(mags)])
-    #     if len(np.nonzero(mags)) == 1:
-    #         minval = None
-    #     mf.plot_brain_saliences(custom_roi, minval, maxval, figpath=fname)
-    #
-    #     fname = fig_path + '/brain_%s.png' % name
-    #     custom_roi = mf.create_custom_roi(roi_path, rois, mags)
-    #     minval = np.min(mags[np.nonzero(mags)])
-    #     if len(np.nonzero(mags)) == 1:
-    #         minval = None
-    #     mf.plot_brain_saliences(custom_roi, minval, maxval, figpath=fname)
+
+    print('%s: Averaging saliences within behavior categories' % pu.ctime())
+    behavior_avg = mf.average_subtable_saliences(y_saliences_z)
+    behavior_avg.to_excel(fig_path+'/behavior_average_z.xlsx')
+
+    print('%s: Plotting behavior bar plots' % pu.ctime())
+    for latent_variable in latent_names:
+        series = behavior_avg[latent_variable]
+        mf.plot_bar(series, fig_path+'/behavior_z_%s.png' % latent_variable)
+
+    roi_path = ddir + '/glasser_atlas/'
+    print('%s: Creating brain figures' % pu.ctime())
+    for name in latent_names:
+        mags = brain_conjunction[name]
+        fname = fig_path + '/brain_%s.png' % name
+
+        custom_roi = mf.create_custom_roi(roi_path, rois, mags)
+        mf.plot_brain_saliences(custom_roi, figpath=fname)
 
     print('%s: Finished' % pu.ctime())
