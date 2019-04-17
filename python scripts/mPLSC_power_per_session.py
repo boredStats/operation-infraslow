@@ -85,7 +85,28 @@ def _x_conjunctions_single_session(single_session_res, latent_variable_names, re
 
     return output
 
+def _signed_average_brain_sal(res_conj, sals_per_session):
+    #From a signed conjunction, make values nonsigned then calc average
+    sessions = list(sals_per_session)
+    rois = res_conj.index
+    latent_names = list(res_conj)
 
+    output = pd.DataFrame(index=rois, columns=latent_names)
+    for roi in rois:
+        for latent_variable in latent_names:
+            conj_test = res_conj.loc[roi, latent_variable]
+            if conj_test != 0:
+                sals = []
+                for sess in sessions:
+                    df = sals_per_session[sess]
+                    val = df.loc[roi, latent_variable]
+                    sals.append(val)
+                mean_sal = np.mean(np.abs(sals))
+                output.loc[roi, latent_variable] = mean_sal
+            else:
+                output.loc[roi, latent_variable] = 0
+
+    return output
 
 if __name__ == "__main__":
     import sys
@@ -260,31 +281,54 @@ if __name__ == "__main__":
         session_brain_z,
         thresh=4
     )
-    brain_conjunctoin_zs = mf.single_table_conjunction(
+    brain_conjunction_zs = mf.single_table_conjunction(
         session_brain_z,
         thresh=4,
-        comp='sign'
+        comp='sign',
+        return_avg=False
     )
+
+    brain_conjunction_zs_corr = _signed_average_brain_sal(
+        brain_conjunction_zs,
+        session_brain_z
+    )
+
     brain_conjunction = {
         'sals_sign':brain_conjunction_s,
         'z_magnitude':brain_conjunction_z,
-        'z_sign':brain_conjunctoin_zs
+        'z_sign':brain_conjunction_zs_corr
         }
     mf.save_xls(brain_conjunction, fig_path+'/brain_conjunction.xlsx')
 
     print('%s: Plotting behavior bar plots' % pu.ctime())
     num_latent_vars = len(list(behavior_avg))
     latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
+
+    max_z = 0
+    for latent_variable in latent_names:
+        current_max = np.max(behavior_avg[latent_variable])
+        if current_max > max_z:
+            max_z = current_max
+
     for latent_variable in latent_names:
         series = behavior_avg[latent_variable]
-        mf.plot_bar(series, fig_path+'/behavior_z_%s.png' % latent_variable)
+        mf.plot_bar(series, max_z, fig_path+'/behavior_z_%s.png' % latent_variable)
 
     print('%s: Plotting brain pictures' % pu.ctime())
     for latent_variable in latent_names:
-        mags = brain_conjunction_z[latent_variable]
+        mags = brain_conjunction_zs_corr[latent_variable]
         fname = fig_path + '/brain_z_%s.png' % latent_variable
 
+        max_z = 0
+        min_z = 99999
+        current_max = np.max(mags)
+        current_min = np.min(mags)
+        if max_z <= current_max:
+            max_z = current_max
+        if min_z >= current_min:
+            min_z = current_min
+
         custom_roi = mf.create_custom_roi(roi_path, rois, mags)
-        mf.plot_brain_saliences(custom_roi, figpath=fname)
+        mf.plot_brain_saliences(custom_roi, minval=min_z, maxval=max_z, figpath=fname)
 
     print('%s: Finished' % pu.ctime())

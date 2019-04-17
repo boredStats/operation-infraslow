@@ -283,7 +283,7 @@ def behavior_conjunctions(session_behavior_saliences, comp='any', thresh=0):
 
     return output
 
-def single_table_conjunction(saliences_dict, comp='any', thresh=0):
+def single_table_conjunction(saliences_dict, comp='any', thresh=0, return_avg=True):
     """
     Run a conjunction between sessions over a single table
 
@@ -319,7 +319,7 @@ def single_table_conjunction(saliences_dict, comp='any', thresh=0):
             conjunction_df,
             compare=comp,
             thresh=thresh,
-            return_avg=True
+            return_avg=return_avg
             ).values
 
         conjunction_res[latent_variable] = np.ndarray.flatten(res_conj)
@@ -524,7 +524,7 @@ def create_custom_roi(roi_path, rois_to_combine, roi_magnitudes):
     nifti = nib.Nifti1Image(template, t_vol.affine, t_vol.header)
     return nifti
 
-def plot_brain_saliences(custom_roi, minval=0, maxval=None, figpath=None):
+def plot_brain_saliences(custom_roi, minval=0, maxval=None, figpath=None, cbar=False):
     mpl.rcParams.update(mpl.rcParamsDefault)
     fsaverage = datasets.fetch_surf_fsaverage()
     orders = [('medial', 'left'), ('medial', 'right'),
@@ -548,7 +548,7 @@ def plot_brain_saliences(custom_roi, minval=0, maxval=None, figpath=None):
         plotting.plot_surf_stat_map(
                 fsaverage['infl_%s' % hemi],
                 texture,
-                cmap='Reds',#'coolwarm',#'seismic',
+                cmap='coolwarm',#'Reds',#'coolwarm',#'seismic',
                 hemi=hemi,
                 view=view,
                 bg_on_data=True,
@@ -558,10 +558,10 @@ def plot_brain_saliences(custom_roi, minval=0, maxval=None, figpath=None):
                 vmax=maxval,
                 output_file=figpath,
                 figure=fig,
-                colorbar=False)
+                colorbar=cbar)
     plt.clf()
 
-def plot_bar(series, fname=None):
+def plot_bar(series, maxy=None, fname=None):
     def _create_colors(series):
         blue = 'xkcd:azure'#np.divide([53, 102, 201], 256)
         red = 'xkcd:red'#np.divide([219,56,33], 256)
@@ -574,15 +574,34 @@ def plot_bar(series, fname=None):
 
         return colors
 
+    def _create_red_meangray(series):
+        red = np.divide([219,56,33], 256)
+        gray = np.multiply([1, 1, 1], .5)
+        colors = [red for n in range(len(series.values))]
+        mu = np.mean(series.values)
+        for v, val in enumerate(series.values):
+            if val < mu:
+                colors[v] = gray
+        return colors, mu
+
+    if maxy is None:
+        maxy = np.max(series.values)
+
     sns.set()
-    #sns.set_style("whitegrid")#, {"axes.facecolor": ".3", "grid.color": ".4"})
-    colors = _create_colors(series)
-    # print(colors)
+    sns.set_style({"axes.facecolor": ".99", "grid.color": ".9"})
+    # colors = _create_colors(series)
+    colors, mu = _create_red_meangray(series)
     x = np.arange(len(series))
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(12, 9))
     plt.bar(x, series, color=colors)
     ax.set_xticks(x)
+    ax.set_ylim(0, 35)
     ax.set_xticklabels(series.index)
+    ax.tick_params(axis='x', labelsize='x-large')
+    ax.tick_params(axis='y', labelsize='large')
+    ax.set_ylabel('Z-scores', size='x-large')
+    ax.set_ylim(0, maxy)
+    ax.axhline(y=mu, linestyle=':', color='k', linewidth=1)
     if fname is not None:
         fig.savefig(fname)
     plt.clf()
@@ -594,7 +613,7 @@ def save_xls(dict_df, path):
     """
 
     writer = pd.ExcelWriter(path)
-    for key in dict_df:
+    for key in list(dict_df):
         dict_df[key].to_excel(writer, '%s' % key)
 
     writer.save()

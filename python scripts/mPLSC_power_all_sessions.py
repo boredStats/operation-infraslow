@@ -51,10 +51,48 @@ def get_highest_squared_brain_salience(res_conj, latent_names):
             vals.append(res_conj[name].values **2)
         return np.max(vals)
 
-def plot_bar(series):
-    x = np.arange(len(series.values))
-    fig, ax = plt.subplots()
-    plt.bar(x, series.values)
+def _signed_average_brain_sal(res_conj, sals_per_session):
+    sessions = list(sals_per_session)
+    rois = res_conj.index
+    latent_names = list(res_conj)
+
+    output = pd.DataFrame(index=rois, columns=latent_names)
+    for roi in rois:
+        for latent_variable in latent_names:
+            conj_test = res_conj.loc[roi, latent_variable]
+            if conj_test != 0:
+                sals = []
+                for sess in sessions:
+                    df = sals_per_session[sess]
+                    val = df.loc[roi, latent_variable]
+                    sals.append(val)
+                mean_sal = np.mean(np.abs(sals))
+                output.loc[roi, latent_variable] = mean_sal
+            else:
+                output.loc[roi, latent_variable] = 0
+
+    return output
+
+def print_zmeta(brain_conjunction, latent_names, fname=None):
+    all_values = []
+    for name in latent_names:
+        mags = brain_conjunction[name]
+        all_values.append(mags.values)
+    min_array = np.ma.masked_equal(all_values, 0.0, copy=False)
+    min_z = min_array.min()
+    max_z = np.max(all_values)
+    mu = np.mean(all_values)
+    std = np.std(all_values, ddof=1)
+
+    if fname is not None:
+        with open(fname, 'w') as file:
+            file.write('Min z-score is %.4f\n' % min_z)
+            file.write('Max z-score is %.4f\n' % max_z)
+            file.write('Mean z-score is: %.4f\n' % mu)
+            file.write('Std-dev z-score is: %.4f' % std)
+    else:
+        print('Mean brain z-score is: %.4d' % mu)
+        print('Std-dev brain z-score is: %.4d' % std)
 
 if __name__ == "__main__":
     import sys
@@ -159,7 +197,8 @@ if __name__ == "__main__":
     mf.save_xls(y_saliences_z, fig_path+'/behavior_saliences_z.xlsx')
     mf.save_xls(x_saliences_z, fig_path+'/brain_saliences_z.xlsx')
 
-    num_latent_vars = len(np.where(res_perm['p_values'] < alpha)[0])
+    #Number of latent variables decided by scree
+    num_latent_vars = 5#len(np.where(res_perm['p_values'] < alpha)[0])
     latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
 
     print('%s: Plotting scree' % pu.ctime())
@@ -169,25 +208,34 @@ if __name__ == "__main__":
                  fname=fig_path+'/scree.png')
 
     print('%s: Running conjunction on brain data' % pu.ctime())
-    brain_conjunction = mf.single_table_conjunction(x_saliences_z, thresh=4)
+    brain_conjunction = mf.single_table_conjunction(x_saliences_z, comp='any', thresh=4)
     brain_conjunction.to_excel(fig_path+'/brain_conjunction.xlsx')
+    # brain_conjunction_signed = _signed_average_brain_sal(brain_conjunction, x_saliences_z)
+    # brain_conjunction_signed.to_excel(fig_path+'/brain_conjunction.xlsx')
 
     print('%s: Averaging saliences within behavior categories' % pu.ctime())
     behavior_avg = mf.average_subtable_saliences(y_saliences_z)
     behavior_avg.to_excel(fig_path+'/behavior_average_z.xlsx')
 
     print('%s: Plotting behavior bar plots' % pu.ctime())
+    max_z = 0
+    for latent_variable in latent_names:
+        current_max = np.max(behavior_avg[latent_variable])
+        if current_max > max_z:
+            max_z = current_max
+
     for latent_variable in latent_names:
         series = behavior_avg[latent_variable]
-        mf.plot_bar(series, fig_path+'/behavior_z_%s.png' % latent_variable)
+        mf.plot_bar(series, max_z, fig_path+'/behavior_z_%s.png' % latent_variable)
 
     roi_path = ddir + '/glasser_atlas/'
     print('%s: Creating brain figures' % pu.ctime())
-    for name in latent_names:
-        mags = brain_conjunction[name]
-        fname = fig_path + '/brain_%s.png' % name
 
-        custom_roi = mf.create_custom_roi(roi_path, rois, mags)
-        mf.plot_brain_saliences(custom_roi, figpath=fname)
+    print_zmeta(brain_conjunction, latent_names, fig_path+'/brain_z_meta.txt')
+    for name in latent_names:
+        mags = brain_conjunction[name]#brain_conjunction_signed[name]
+        fname = fig_path + '/brain_%s.png' % name
+        # custom_roi = mf.create_custom_roi(roi_path, rois, mags)
+        # mf.plot_brain_saliences(custom_roi, minval=4, maxval=40, figpath=fname, cbar=False)
 
     print('%s: Finished' % pu.ctime())

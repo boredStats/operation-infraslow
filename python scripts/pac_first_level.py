@@ -49,7 +49,7 @@ def _extract_phase_amp(meg_subj, meg_sess, database, rois, fs, band_dict, phase_
                 grp.create_dataset('phase_data', data=phase_mat)
                 grp.create_dataset('amplitude_data', data=amp_mat)
                 out_file.close()
-                
+
 
 print('%s: Starting' % pu.ctime())
 
@@ -66,7 +66,7 @@ fs = 500
 
 data_path = pdir + '/data/MEG_BOLD_phase_amp_data.hdf5'
 # _extract_phase_amp(meg_subj, meg_sess, database, rois, fs, band_dict, data_path)
-print('%s: Finished extracting phase/amplitude data' % pu.ctime())
+# print('%s: Finished extracting phase/amplitude data' % pu.ctime())
 
 print('%s: Running phase-amplitdue coupling' % pu.ctime())
 coupling_path = pdir + '/data/MEG_BOLD_phase_amp_coupling.hdf5'
@@ -90,19 +90,18 @@ for sess in meg_sess:
             if group_path in cfc_file:
                 continue #check if work has already been done
             print('%s: %s %s %s' % (pu.ctime(), sess, str(subj), roi))
-            r_mat = np.ndarray(shape=[len(band1), len(band2)])
-            p_mat = np.ndarray(shape=[len(band1), len(band2)])
+            r_mat = np.ndarray(shape=(len(band2)))
+            p_mat = np.ndarray(shape=(len(band2)))
 
-            for slow_index, slow in enumerate(band1):
-                slow_group = subj_data.get(slow)
+                slow_group = subj_data.get('BOLD bandpass')
                 slow_ts = slow_group.get('phase_data')[:, r]
                 for reg_index, reg in enumerate(band2):
                     reg_group = subj_data.get(reg)
                     reg_ts = reg_group.get('amplitude_data')[:, r]
 
                     r_val, p_val = pac.circCorr(slow_ts, reg_ts)
-                    r_mat[slow_index, reg_index] = r_val
-                    p_mat[slow_index, reg_index] = p_val
+                    r_mat[reg_index] = r_val
+                    p_mat[reg_index] = p_val
 
             out_group = cfc_file.require_group(group_path)
             out_group.create_dataset('r_vals', data=r_mat)
@@ -110,5 +109,5 @@ for sess in meg_sess:
             cfc_file.close()
 
         phase_amp_file.close()
-
+        
 print('%s: Finished' % pu.ctime())
