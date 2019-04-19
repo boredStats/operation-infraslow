@@ -106,6 +106,7 @@ if __name__ == "__main__":
     ddir = pdir + '/data'
     pdObj = pu.proj_data()
     rois = pdObj.roiLabels
+    colors = pdObj.colors
     meg_subj, meg_sessions = pdObj.get_meg_metadata()
     mri_subj, mri_sess = pdObj.get_mri_metadata()
     subject_overlap = [s for s in mri_subj if s in meg_subj]
@@ -226,16 +227,56 @@ if __name__ == "__main__":
 
     for latent_variable in latent_names:
         series = behavior_avg[latent_variable]
-        mf.plot_bar(series, max_z, fig_path+'/behavior_z_%s.png' % latent_variable)
+        mf.plot_bar(series, max_z, colors, fig_path+'/behavior_z_%s.svg' % latent_variable)
+
+    y_saliences_zscores_thresh = {}
+    for behavior_category in list(y_saliences_z):
+        unthresh_df = y_saliences_z[behavior_category]
+        unthresh_vals = unthresh_df.values
+        thresh_vals = np.ndarray(shape=unthresh_vals.shape)
+        for r in range(len(unthresh_df.index)):
+            for c in range(len(list(unthresh_df))):
+                if np.abs(unthresh_vals[r, c]) < 4:
+                    thresh_vals[r, c] = 0
+                else:
+                    thresh_vals[r, c] = unthresh_vals[r, c]
+        thresh_df = pd.DataFrame(thresh_vals, index=unthresh_df.index, columns=list(unthresh_df))
+        y_saliences_zscores_thresh[behavior_category] = thresh_df
+
+    print('%s: Creating bar/table combo figure' % pu.ctime())
+    def _quick_hist(data, fname=None):
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots()
+        ax.hist(data, bins=10)
+        if fname is not None:
+            fig.savefig(fname, bbox_inches='tight')
+
+    print('%s: Creating bar/table combo figures' % pu.ctime())
+    mu = []
+    for name in latent_names:
+        latent_data = []
+        for behavior_category in list(y_saliences_zscores_thresh):
+            behavior_df = y_saliences_zscores_thresh[behavior_category]
+            series = behavior_df[name]
+            latent_data.append(np.abs(series.values))
+        latent_data_onelist = [v for vals in latent_data for v in vals]
+        mu.append(np.mean(latent_data_onelist))
+        _quick_hist(latent_data_onelist, fig_path+'/behavior_hist_%s.png' % name)
+
+    for n, name in enumerate(latent_names):
+        mean = mu[n]
+        print(mean)
+        fname = fig_path+'/behavior_fullbar_%s.svg' % name
+        mf.bar_all_behaviors(y_saliences_zscores_thresh, name, mean, colors, 80, fname)
 
     roi_path = ddir + '/glasser_atlas/'
     print('%s: Creating brain figures' % pu.ctime())
 
     print_zmeta(brain_conjunction, latent_names, fig_path+'/brain_z_meta.txt')
-    for name in latent_names:
-        mags = brain_conjunction[name]#brain_conjunction_signed[name]
-        fname = fig_path + '/brain_%s.png' % name
-        # custom_roi = mf.create_custom_roi(roi_path, rois, mags)
-        # mf.plot_brain_saliences(custom_roi, minval=4, maxval=40, figpath=fname, cbar=False)
-
+    # for name in latent_names:
+    #     mags = brain_conjunction[name]#brain_conjunction_signed[name]
+    #     fname = fig_path + '/brain_%s.svg' % name
+    #     custom_roi = mf.create_custom_roi(roi_path, rois, mags)
+    #     mf.plot_brain_saliences(custom_roi, minval=4, maxval=20, figpath=fname, cbar=False, cmap='PiYG_r')
     print('%s: Finished' % pu.ctime())
