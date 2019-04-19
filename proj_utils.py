@@ -47,7 +47,7 @@ class proj_data():
                       'Beta': (12, 30),
                       'Gamma': (30, 55)}
         self.colors = []
-        with open(server + '/20_distinct_colors.txt', 'r') as file:
+        with open(server + '/rgb_google20c.txt', 'r') as file:
             for line in file:
                 line = line.replace('\n', '')
                 line = '(%s)' % line
