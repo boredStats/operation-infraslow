@@ -215,34 +215,34 @@ def _signed_average_brain_sal(res_conj, sals_per_session):
     return output
 
 print('%s: Running conjunction on brain data' % pu.ctime())
-# conjunctions_sign_matters, conjunctions_no_sign = {}, {}
-# for band in bands:
-#     sals_per_sess = {}
-#     for session in meg_sessions:
-#         for brain_table in list(x_saliences_z):
-#             if session in brain_table and band in brain_table:
-#                 sals_per_sess[session] = x_saliences_z[brain_table]
-#
-#     mf.save_xls(sals_per_sess, fig_path+'/brain_saliences_z_%s.xlsx' % band)
-#
-#     # print('%s: Running signed conjunction on %s' % (pu.ctime(), band))
-#     # res_conj = mf.single_table_conjunction(
-#     #     sals_per_sess,
-#     #     comp='sign',
-#     #     thresh=4,
-#     #     return_avg=False)
-#     #
-#     # res_conj_sign_corrected = _signed_average_brain_sal(res_conj, sals_per_sess)
-#     # res_conj_sign_corrected.to_excel(fig_path+'/conjunction_sign_matters_%s.xlsx' % band)
-#     # conjunctions_sign_matters[band] = res_conj_sign_corrected
-#
-#     print('%s: Running unsigned conjunction on %s' % (pu.ctime(), band))
-#     res_conj = mf.single_table_conjunction(
-#         sals_per_sess,
-#         comp='any',
-#         thresh=4)
-#     res_conj.to_excel(fig_path+'/conjunction_no_sign_%s.xlsx' % band)
-#     conjunctions_no_sign[band] = res_conj
+conjunctions_sign_matters, conjunctions_no_sign = {}, {}
+for band in bands:
+    sals_per_sess = {}
+    for session in meg_sessions:
+        for brain_table in list(x_saliences_z):
+            if session in brain_table and band in brain_table:
+                sals_per_sess[session] = x_saliences_z[brain_table]
+
+    mf.save_xls(sals_per_sess, fig_path+'/brain_saliences_z_%s.xlsx' % band)
+
+    # print('%s: Running signed conjunction on %s' % (pu.ctime(), band))
+    # res_conj = mf.single_table_conjunction(
+    #     sals_per_sess,
+    #     comp='sign',
+    #     thresh=4,
+    #     return_avg=False)
+    #
+    # res_conj_sign_corrected = _signed_average_brain_sal(res_conj, sals_per_sess)
+    # res_conj_sign_corrected.to_excel(fig_path+'/conjunction_sign_matters_%s.xlsx' % band)
+    # conjunctions_sign_matters[band] = res_conj_sign_corrected
+
+    print('%s: Running unsigned conjunction on %s' % (pu.ctime(), band))
+    res_conj = mf.single_table_conjunction(
+        sals_per_sess,
+        comp='any',
+        thresh=4)
+    res_conj.to_excel(fig_path+'/conjunction_no_sign_%s.xlsx' % band)
+    conjunctions_no_sign[band] = res_conj
 
 print('%s: Plotting behavior bar plots' % pu.ctime())
 max_z = 0
@@ -254,7 +254,7 @@ for latent_variable in latent_names:
 max_z = max_z + 1
 for latent_variable in latent_names:
     series = behavior_avg[latent_variable]
-    mf.plot_bar(series, max_z, fig_path+'/behavior_z_%s.png' % latent_variable)
+    mf.plot_bar(series, max_z, colors, fig_path+'/behavior_z_%s.svg' % latent_variable)
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -314,12 +314,12 @@ def _stacked_bar_with_tables(z_scores_series, fname=None):
         fig.savefig(fname, bbox_inches='tight', pad_inches=.5)
     fig.clf()
 
-# print('%s: Creating stacked bar plots with tables' % pu.ctime())
-# for behavior_category in list(y_saliences_zscores_thresh):
-#     behavior_df = y_saliences_zscores_thresh[behavior_category]
-#     series_to_plot = behavior_df[latent_names]
-#     fname = fig_path+'/behavior_stacked_bar_%s.png' % behavior_category
-#     _stacked_bar_with_tables(series_to_plot, fname)
+print('%s: Creating stacked bar plots with tables' % pu.ctime())
+for behavior_category in list(y_saliences_zscores_thresh):
+    behavior_df = y_saliences_zscores_thresh[behavior_category]
+    series_to_plot = behavior_df[latent_names]
+    fname = fig_path+'/behavior_stacked_bar_%s.png' % behavior_category
+    _stacked_bar_with_tables(series_to_plot, fname)
 
 def _bar_table_combo(z_scores_series, color, fname=None):
     original_z = np.abs(series_to_plot.to_numpy())
@@ -348,56 +348,81 @@ def _bar_table_combo(z_scores_series, color, fname=None):
         fig.savefig(fname, bbox_inches='tight')
     fig.clf()
 
-print('%s: Creating bar/table combo figure' % pu.ctime())
-color_list = []
-rownames = []
-series_combined = []
+def _quick_hist(data, fname=None):
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots()
+    ax.hist(data, bins=10)
+    if fname is not None:
+        fig.savefig(fname, bbox_inches='tight')
+
+print('%s: Creating bar/table combo figures' % pu.ctime())
+mu = []
 for name in latent_names:
-
-    for b, behavior_category in enumerate(list(y_saliences_zscores_thresh)):
-        color = list(np.divide(colors[b], 255))
-        color.append(1)
-        print(color)
-        for name in latent_names:
-            behavior_df = y_saliences_zscores_thresh[behavior_category]
-            series_to_plot = behavior_df[name]
-            fname = fig_path+'/behavior_bar_table_%s.png' % behavior_category
-            _bar_table_combo(series_to_plot, color, fname)
-            break
-
-        color = list(np.divide(colors[b], 255))
-        color.append(1)
-        color = tuple(color)
-
+    latent_data = []
+    for behavior_category in list(y_saliences_zscores_thresh):
         behavior_df = y_saliences_zscores_thresh[behavior_category]
-        series_to_plot = behavior_df[name]
+        series = behavior_df[name]
+        latent_data.append(np.abs(series.values))
+    latent_data_onelist = [v for vals in latent_data for v in vals]
+    mu.append(np.mean(latent_data_onelist))
+    _quick_hist(latent_data_onelist, fig_path+'/behavior_hist_%s.png' % name)
 
-        color_list.append([color] * len(series_to_plot.index))
-        rownames.append(series_to_plot.index)
-        vals = np.abs(series_to_plot.values)
-        print(vals.shape)
-        series_combined.append(list(vals)[0])
+for n, name in enumerate(latent_names):
+    mean = mu[n]
+    print(mean)
+    fname = fig_path+'/behavior_fullbar_%s.svg' % name
+    mf.bar_all_behaviors(y_saliences_zscores_thresh, name, mean, colors, 40, fname)
 
-    series_combined_2 = np.ndarray.flatten(np.array(series_combined))
-    print(len(series_combined_2))
-    fname = fig_path+'/test.png'
-
-    data = np.abs(series_combined_2)
-
-    index = np.arange(len(rownames))
-
-    fig, ax = plt.subplots(figsize=(30, 12))
-    ax.barh(index, series_combined_2, align='center', height=1)
-    ax.set_yticks(index)
-    ax.set_yticklabels(rownames)
-    ax.set_xlim(0, 30)
-    # plt.show()
-    fig.savefig(fname, bbox_inches='tight')
-    fig.clf()
-
-
-
-
+# for name in latent_names:
+#     color_list = []
+#     rowname_extract = []
+#     series_extract = []
+#
+#     for b, behavior_category in enumerate(list(y_saliences_zscores_thresh)):
+#         # color = list(np.divide(colors[b], 255))
+#         # color.append(1)
+#         # print(color)
+#         # for name in latent_names:
+#         #     behavior_df = y_saliences_zscores_thresh[behavior_category]
+#         #     series_to_plot = behavior_df[name]
+#         #     fname = fig_path+'/behavior_bar_table_%s.png' % behavior_category
+#         #     _bar_table_combo(series_to_plot, color, fname)
+#         #     break
+#
+#         color = list(np.divide(colors[b], 255))
+#         color.append(1)
+#         color = tuple(color)
+#
+#         behavior_df = y_saliences_zscores_thresh[behavior_category]
+#         series_to_plot = behavior_df[name]
+#
+#         color_list.append([color] * len(series_to_plot.index))
+#         rowname_extract.append(series_to_plot.index)
+#         series_extract.append(np.abs(series_to_plot.values))
+#
+#     series_combined = _dumb_extraction(series_extract)
+#     rownames = _dumb_extraction(rowname_extract)
+#     plot_colors = [c for cols in color_list for c in cols]
+#     for c in plot_colors:
+#         print(c)
+#
+#     # Reverse order of bars, row names, colors for plot
+#     series_combined.reverse()
+#     rownames.reverse()
+#     color_list.reverse()
+#
+#     fname = fig_path+'/behavior_fullbar_%s.svg' % name
+#
+#     index = np.arange(len(rownames))
+#     fig, ax = plt.subplots(figsize=(12, 30))
+#     ax.barh(index, series_combined, align='center', color=plot_colors, height=1)
+#     ax.set_yticks(index)
+#     ax.set_yticklabels([])
+#     ax.set_xlim(0, 25)
+#     # plt.show()
+#     fig.savefig(fname, bbox_inches='tight')
+#     fig.clf()
 
 print('%s: Extracting brain z-score metadata' % pu.ctime())
 def print_zmeta(brain_conjunction, bands, latent_names, fname):
@@ -436,8 +461,8 @@ if check == 'y':
         brain_conjunction = conjunctions_no_sign[band]#conjunctions_sign_matters[band]
         for name in latent_names:
             mags = brain_conjunction[name]
-            fname = fig_path + '/brain_%s_%s.png' % (band, name)
+            fname = fig_path + '/brain_%s.svg' % name
             custom_roi = mf.create_custom_roi(roi_path, rois, mags)
-            mf.plot_brain_saliences(custom_roi, minval=4, maxval=20, figpath=fname)
+            mf.plot_brain_saliences(custom_roi, minval=4, maxval=20, figpath=fname, cbar=False, cmap='PiYG_r')
 
 print('%s: Finished' % pu.ctime())
