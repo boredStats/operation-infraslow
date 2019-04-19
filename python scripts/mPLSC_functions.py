@@ -476,6 +476,57 @@ def plot_radar2(saliences_series, max_val=None, choose=True, separate_neg=True, 
     plt.clf()
     return max_val
 
+def bar_all_behaviors(behavior_dict, latent_variable, mu, colors, xlim, fname=None):
+    mpl.rcParams.update(mpl.rcParamsDefault)
+    def _dumb_extraction(pandas_extract):
+        #Properly extract pandas series data into a single list
+        output = []
+        for vals in pandas_extract:
+            for v in vals:
+                output.append(v)
+        return output
+
+    color_list = []
+    rowname_extract = []
+    series_extract = []
+    gray = np.multiply([1, 1, 1, 1], .5)
+
+    for b, behavior_category in enumerate(list(behavior_dict)):
+        behavior_df = behavior_dict[behavior_category]
+        latent_variable_data = behavior_df[latent_variable]
+        series_to_plot = np.abs(latent_variable_data.values)
+        color = list(np.divide(colors[b], 255))
+        color.append(1)
+        color = tuple(color)
+        behavior_category_colors = [color] * len(series_to_plot)
+        for c in range(len(behavior_category_colors)):
+            if series_to_plot[c] < mu:
+                behavior_category_colors[c] = gray
+
+        color_list.append(behavior_category_colors)
+        rowname_extract.append(latent_variable_data.index)
+        series_extract.append(series_to_plot)
+
+    series_combined = _dumb_extraction(series_extract)
+    rownames = _dumb_extraction(rowname_extract)
+    plot_colors = [c for cols in color_list for c in cols]
+
+    series_combined.reverse()
+    rownames.reverse()
+    plot_colors.reverse()
+
+    index = np.arange(len(rownames))
+    fig, ax = plt.subplots(figsize=(12, 30))
+    ax.barh(index, series_combined, align='center', color=plot_colors, height=1)
+    ax.set_yticks(index)
+    ax.set_yticklabels([])
+    ax.set_xlim(0, xlim)
+    ax.set_xticklabels([])
+
+    if fname is not None:
+        fig.savefig(fname, bbox_inches='tight')
+    fig.clf()
+
 def create_custom_roi(roi_path, rois_to_combine, roi_magnitudes):
     """
     Create a custom ROI
@@ -524,8 +575,10 @@ def create_custom_roi(roi_path, rois_to_combine, roi_magnitudes):
     nifti = nib.Nifti1Image(template, t_vol.affine, t_vol.header)
     return nifti
 
-def plot_brain_saliences(custom_roi, minval=0, maxval=None, figpath=None, cbar=False):
+def plot_brain_saliences(custom_roi, minval=0, maxval=None, figpath=None, cbar=False, cmap=None):
     mpl.rcParams.update(mpl.rcParamsDefault)
+    if cmap is None:
+        cmap = 'coolwarm'
     fsaverage = datasets.fetch_surf_fsaverage()
     orders = [('medial', 'left'), ('medial', 'right'),
              ('lateral', 'left'), ('lateral', 'right')]
@@ -548,20 +601,21 @@ def plot_brain_saliences(custom_roi, minval=0, maxval=None, figpath=None, cbar=F
         plotting.plot_surf_stat_map(
                 fsaverage['infl_%s' % hemi],
                 texture,
-                cmap='coolwarm',#'Reds',#'coolwarm',#'seismic',
+                cmap=cmap,#'Reds',#'coolwarm',#'seismic',
                 hemi=hemi,
                 view=view,
                 bg_on_data=True,
                 axes=axes_list[index],
                 bg_map=fsaverage['sulc_%s' % hemi],
                 threshold=minval,
-                vmax=maxval,
+                # vmax=maxval,
                 output_file=figpath,
+                symmetric_cbar=False,
                 figure=fig,
                 colorbar=cbar)
     plt.clf()
 
-def plot_bar(series, maxy=None, fname=None):
+def plot_bar(series, maxy=None, colors=None, fname=None):
     def _create_colors(series):
         blue = 'xkcd:azure'#np.divide([53, 102, 201], 256)
         red = 'xkcd:red'#np.divide([219,56,33], 256)
@@ -574,34 +628,46 @@ def plot_bar(series, maxy=None, fname=None):
 
         return colors
 
-    def _create_red_meangray(series):
-        red = np.divide([219,56,33], 256)
-        gray = np.multiply([1, 1, 1], .5)
-        colors = [red for n in range(len(series.values))]
+    def _greymean(series, colors):
+        alpha_colors = []
+        for c in colors:
+            color = list(np.divide(c, 255))
+            color.append(1)
+            color = tuple(color)
+            alpha_colors.append(color)
+        # red = np.divide([219,56,33], 256)
+        gray = np.multiply([1, 1, 1, 1], .5)
+        # colors = [red for n in range(len(series.values))]
         mu = np.mean(series.values)
         for v, val in enumerate(series.values):
             if val < mu:
-                colors[v] = gray
-        return colors, mu
+                alpha_colors[v] = gray
+        return alpha_colors, mu
 
     if maxy is None:
         maxy = np.max(series.values)
-
-    sns.set()
-    sns.set_style({"axes.facecolor": ".99", "grid.color": ".9"})
-    # colors = _create_colors(series)
-    colors, mu = _create_red_meangray(series)
+    if colors is None:
+        colors = ['xkcd:red'] * len(series.values)
+    # sns.set()
+    # sns.set_style({"axes.facecolor": ".99", "grid.color": ".9"})
+    mpl.rcParams.update(mpl.rcParamsDefault)
+    colors, mu = _greymean(series, colors)
     x = np.arange(len(series))
     fig, ax = plt.subplots(figsize=(12, 9))
     plt.bar(x, series, color=colors)
     ax.set_xticks(x)
     ax.set_ylim(0, 35)
-    ax.set_xticklabels(series.index)
-    ax.tick_params(axis='x', labelsize='x-large')
-    ax.tick_params(axis='y', labelsize='large')
-    ax.set_ylabel('Z-scores', size='x-large')
-    ax.set_ylim(0, maxy)
-    ax.axhline(y=mu, linestyle=':', color='k', linewidth=1)
+    # ax.set_xticklabels(series.index)
+    ax.tick_params(axis='x', labelsize='x-large', length=0)
+    ax.tick_params(axis='y', labelsize='large', length=0)
+    # ax.set_ylabel('Z-scores', size='x-large')
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+    ax.set_ylim(0, mu*2)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+    # ax.axhline(y=mu, linestyle=':', color='k', linewidth=1)
     if fname is not None:
         fig.savefig(fname)
     plt.clf()
