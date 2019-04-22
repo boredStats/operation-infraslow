@@ -13,7 +13,6 @@ import sys
 sys.path.append("..")
 import proj_utils as pu
 
-
 def build_output(ts_data, fs, rois, band):
     #Load in a subject, calculate phase/amplitude for each roi
     ts_len = len(ts_data[rois[0]])
