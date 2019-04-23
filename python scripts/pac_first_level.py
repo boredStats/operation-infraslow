@@ -127,4 +127,59 @@ if check=='y':
 #
 #         phase_amp_file.close()
 
+print('%s: Running phase-amplitdue coupling' % pu.ctime())
+coupling_path = pdir + '/data/MEG_phase_amp_coupling_delta_theta.hdf5' #all combinations
+
+data_path_full = pdir + '/data/MEG_BOLD_phase_amp_data.hdf5'
+data_path_delta_theta = pdir + '/data/MEG_phase_amp_data_delta_theta.hdf5'
+
+# #BOLD bandpass with higher frequency only
+# slow_bands = ['BOLD bandpass']
+# reg_bands = ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma']
+
+phase_bands = ['Delta', 'Theta']#list(band_dict)
+amp_bands = ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma']
+
+for sess in meg_sess:
+    for subj in meg_subj:
+        data_file_full = h5py.File(data_path_full, 'r')
+        data_file_delta_theta = h5py.File(data_path_delta_theta, 'r')
+
+        subj_data_full = data_file_full.get(subj + '/' + sess)
+        subj_data_delta_theta = data_file_delta_theta.get(subj + '/' + sess)
+
+        for r, roi in enumerate(rois):
+            cfc_file = h5py.File(coupling_path)
+            group_path = sess + '/' + subj + '/' + roi
+            if group_path in cfc_file:
+                continue #check if work has already been done
+
+            print('%s: CFC for %s %s %s' % (pu.ctime(), sess, str(subj), roi))
+            r_mat = np.ndarray(shape=(len(phase_bands), len(amp_bands)))
+            p_mat = np.ndarray(shape=(len(phase_bands), len(amp_bands)))
+            for phase_index, phase_band in enumerate(phase_bands):
+                p_grp = subj_data_delta_theta.get(phase_band)
+                phase_spect = p_grp.get('phase_data')[:, r]
+                for amp_index, amp_band in enumerate(amp_bands):
+                    a_grp = subj_data_full.get(amp_badn)
+                    amp_spect = a_grp.get('amplitude_data')[:, r]
+
+                    r_val, p_val = pac.circCorr(phase_spect, amp_spect)
+                    r_mat[phase_index, amp_index] = r_val
+                    p_mat[phase_index, amp_index] = p_val
+
+            out_group = cfc_file.require_group(group_path)
+            out_group.create_dataset(
+                'r_vals',
+                data=r_mat,
+                compression=comp)
+            out_group.create_dataset(
+                'p_vals',
+                data=p_mat,
+                compression=comp)
+            cfc_file.close()
+
+        data_file_full.close()
+        data_file_delta_theta.close()
+
 print('%s: Finished' % pu.ctime())
