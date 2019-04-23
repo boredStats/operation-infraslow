@@ -39,13 +39,13 @@ def plot_raw_phase_amp(timeseries, phase_data, amp_data, fs):
     plt.figure(figsize = (15,6))
     ts_to_plot = timeseries[1:int(fs)*2]
     amp_to_plot = amp_data[1:int(fs)*2]
-    
+
     normalized_amp = (amp_to_plot - np.mean(amp_to_plot)) / np.std(amp_to_plot)
     normalized_ts = (ts_to_plot - np.mean(ts_to_plot)) / np.std(ts_to_plot)
-    
+
     plt.plot(normalized_ts, label= 'Raw Data') #normalized raw data
     plt.plot(phase_data[1:int(fs)*2], label='Phase')
-    plt.plot(normalized_amp, label='Amplitude') 
+    plt.plot(normalized_amp, label='Amplitude')
     plt.xlabel('Two Seconds')
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
@@ -70,34 +70,34 @@ if __name__ == "__main__":
     import sys
     sys.path.append("..")
     import proj_utils as pu
-     
+
     pdir = pu._get_proj_dir()
     pdObj = pu.proj_data()
     pData = pdObj.get_data()
     rois = pData['roiLabels']
     database = pData['database']
-    
+
     meg_subj_path = pdir + '/data/timeseries_MEG'
     files = sorted(os.listdir(meg_subj_path), key=str.lower)
-    
+
     meg_subj = list(set([f.split('_')[0] for f in files]))
     meg_subj = sorted(meg_subj)
-    
+
     bad_meg_subj = ['169040', '662551']
     for bad in bad_meg_subj:
         if bad in meg_subj:
             meg_subj.remove(bad)
-    
+
     meg_sess = list(set([f.split('_')[-1].replace('.mat', '') for f in files]))
     meg_sess = sorted(meg_sess)
-    
+
     fs = 500 #Sampling rate
-    
+
     print('%s: Single subject test' % pu.ctime())
     subj = meg_subj[0]
     sess = meg_sess[0]
     roi = rois[50]
-    
+
     dset = database['/'+ subj +'/MEG/'+ sess +'/timeseries']
     meg_data = pu.read_database(dset, rois)
     timeseries = meg_data[roi]
