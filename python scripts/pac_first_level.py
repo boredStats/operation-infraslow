@@ -100,7 +100,7 @@ for sess in meg_sess:
                 p_grp = subj_data.get(phase_band)
                 phase_spect = p_grp.get('phase_data')[:, r]
                 for amp_index, amp_band in enumerate(amp_bands):
-                    a_grp = subj_data.get(amp_badn)
+                    a_grp = subj_data.get(amp_band)
                     amp_spect = a_grp.get('amplitude_data')[:, r]
 
                     r_val, p_val = pac.circCorr(phase_spect, amp_spect)
@@ -118,6 +118,6 @@ for sess in meg_sess:
                 compression=comp)
             cfc_file.close()
 
-        phase_amp_file.close()
+        data_file.close()
 
 print('%s: Finished' % pu.ctime())
