@@ -464,5 +464,4 @@ if check == 'y':
             fname = fig_path + '/brain_%s.svg' % name
             custom_roi = mf.create_custom_roi(roi_path, rois, mags)
             mf.plot_brain_saliences(custom_roi, minval=4, maxval=20, figpath=fname, cbar=False, cmap='PiYG_r')
-
 print('%s: Finished' % pu.ctime())
