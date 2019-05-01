@@ -10,7 +10,7 @@ import pickle as pkl
 import mPLSC_functions as mf
 
 def load_delta_theta_cfc(hdf5_path, rois, subjects, sessions, outfile=None):
-    bands_to_extract = [('Delta', 'Theta'), ('Theta', 'Gamma')]
+    bands_to_extract = [('BOLD bandpass', 'Delta'), ('Delta', 'Theta'), ('Theta', 'Gamma')]
     bands = ['BOLD bandpass', 'Delta', 'Theta', 'Alpha', 'Gamma']
 
     #Getting metadata from hdf5_path
