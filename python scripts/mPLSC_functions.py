@@ -527,7 +527,7 @@ def bar_all_behaviors(behavior_dict, latent_variable, mu, colors, xlim, fname=No
         fig.savefig(fname, bbox_inches='tight')
     fig.clf()
 
-def create_custom_roi(roi_path, rois_to_combine, roi_magnitudes):
+def create_custom_roi(roi_path, rois_to_combine, roi_magnitudes, fname=None):
     """
     Create a custom ROI
 
@@ -573,6 +573,8 @@ def create_custom_roi(roi_path, rois_to_combine, roi_magnitudes):
         template = stack_3d_dynamic(template, roi_indices, roi_magnitudes[r])
 
     nifti = nib.Nifti1Image(template, t_vol.affine, t_vol.header)
+    if fname is not None:
+        nib.save(nifti, fname)
     return nifti
 
 def plot_brain_saliences(custom_roi, minval=0, maxval=None, figpath=None, cbar=False, cmap=None):
