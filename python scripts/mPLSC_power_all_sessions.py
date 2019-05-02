@@ -274,9 +274,16 @@ if __name__ == "__main__":
     print('%s: Creating brain figures' % pu.ctime())
 
     print_zmeta(brain_conjunction, latent_names, fig_path+'/brain_z_meta.txt')
-    # for name in latent_names:
-    #     mags = brain_conjunction[name]#brain_conjunction_signed[name]
-    #     fname = fig_path + '/brain_%s.svg' % name
-    #     custom_roi = mf.create_custom_roi(roi_path, rois, mags)
-    #     mf.plot_brain_saliences(custom_roi, minval=4, maxval=20, figpath=fname, cbar=False, cmap='PiYG_r')
+    for name in latent_names:
+        mags = brain_conjunction[name]
+        mu = np.mean(mags)
+        fname = fig_path + '/brain_%s.tiff' % name
+        custom_roi = mf.create_custom_roi(roi_path, rois, mags)
+        mf.plot_brain_saliences(
+            custom_roi,
+            minval=4,
+            maxval=mu,
+            figpath=fname,
+            cbar=False,
+            cmap='viridis')
     print('%s: Finished' % pu.ctime())
