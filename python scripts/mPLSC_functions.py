@@ -617,7 +617,7 @@ def plot_brain_saliences(custom_roi, minval=0, maxval=None, figpath=None, cbar=F
                 bg_on_data=True,
                 axes=axes_list[index],
                 bg_map=fsaverage['sulc_%s' % hemi],
-                threshold=minval,
+                vmin=minval,
                 vmax=maxval,
                 output_file=figpath,
                 symmetric_cbar=False,
@@ -625,6 +625,47 @@ def plot_brain_saliences(custom_roi, minval=0, maxval=None, figpath=None, cbar=F
                 darkness=.5,
                 colorbar=cbar)
     plt.clf()
+
+def plot_brain_saliences_no_subplots(custom_roi, minval=0, maxval=None, figpath=None, cbar=False, cmap=None):
+    mpl.rcParams.update(mpl.rcParamsDefault)
+    if cmap is None:
+        cmap = 'coolwarm'
+
+    fsaverage = datasets.fetch_surf_fsaverage()
+
+    orders = [
+        ('medial', 'left'),
+        ('medial', 'right'),
+        ('lateral', 'left'),
+        ('lateral', 'right')]
+
+    for index, order in enumerate(orders):
+        view = order[0]
+        hemi = order[1]
+        out_name = '%s_%s_%s.pdf' % (figpath, view, hemi)
+        fig, ax = plt.subplots(
+            figsize=(8.0, 6.0),
+            dpi=300,
+            subplot_kw={'projection':'3d'})
+
+        texture = surface.vol_to_surf(custom_roi, fsaverage['pial_%s' % hemi])
+        plotting.plot_surf_roi(
+                fsaverage['infl_%s' % hemi],
+                texture,
+                cmap=cmap,
+                hemi=hemi,
+                view=view,
+                bg_on_data=True,
+                axes=ax,
+                bg_map=fsaverage['sulc_%s' % hemi],
+                vmin=minval,
+                vmax=maxval,
+                output_file=out_name,
+                symmetric_cbar=False,
+                figure=fig,
+                darkness=.5,
+                colorbar=cbar)
+        plt.clf()
 
 def plot_bar(series, maxy=None, colors=None, fname=None):
     def _create_colors(series):
