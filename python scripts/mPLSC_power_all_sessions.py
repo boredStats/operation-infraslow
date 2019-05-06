@@ -273,17 +273,55 @@ if __name__ == "__main__":
     roi_path = ddir + '/glasser_atlas/'
     print('%s: Creating brain figures' % pu.ctime())
 
+    import nibabel as nib
     print_zmeta(brain_conjunction, latent_names, fig_path+'/brain_z_meta.txt')
-    for name in latent_names:
-        mags = brain_conjunction[name]
-        mu = np.mean(mags)
-        fname = fig_path + '/brain_%s.tiff' % name
-        custom_roi = mf.create_custom_roi(roi_path, rois, mags)
-        mf.plot_brain_saliences(
-            custom_roi,
-            minval=4,
-            maxval=mu,
-            figpath=fname,
-            cbar=False,
-            cmap='viridis')
+    check = input('Plot brains? y/n ')
+    if check == 'y':
+        for name in latent_names:
+            mags = brain_conjunction[name]
+            mu = np.mean(mags)
+            # custom_roi = mf.create_custom_roi(roi_path, rois, mags)
+
+            custom_roi = nib.load(fig_path + '/%s.nii.gz' % name)
+            fname = fig_path + '/brain_%s.pdf' % name
+            fname = 'brain_%s.pdf' % name
+            mf.plot_brain_saliences(
+                custom_roi,
+                minval=4,
+                maxval=40,
+                figpath=fname,
+                cbar=False,
+                cmap='viridis')
+
+        true_brain_means = pd.DataFrame(columns=latent_names)
+        for name in latent_names:
+            session_data = np.ndarray(shape=(len(rois), len(meg_sessions)))
+            for s, sess in enumerate(list(x_saliences_z)):
+                session_df = x_saliences_z[sess]
+                session_lv = session_df[name]
+                lv_vals = np.abs(session_lv.values)
+                session_data[:, s] = lv_vals
+            # hist_data = np.ndarray.flatten(session_data)
+            # _quick_hist(hist_data, fig_path + '/brain_hist_%s.png' % name)
+            average_lv = np.mean(session_data, axis=1)
+            true_mu = np.mean(average_lv)
+            true_brain_means.loc['mu', name] = true_mu
+        #
+        # for name in latent_names:
+        #     mags = brain_conjunction[name]
+        #     mu = true_brain_means[name].values
+        #     _quick_hist(mags.values, fig_path + '/brain_hist_%s.png' % name)
+        #     print(mu)
+        #     # custom_roi = mf.create_custom_roi(roi_path, rois, mags)
+        #     # nib.save(custom_roi, fig_path + '/%s.nii.gz' % name)
+        #     custom_roi = nib.load(fig_path + '/%s.nii.gz' % name)
+        #     fname = fig_path + '/brain_%s' % name
+        #     mf.plot_brain_saliences_no_subplots(
+        #         custom_roi,
+        #         minval=4,
+        #         maxval=80,#mu,
+        #         figpath=fname,
+        #         cmap='viridis',
+        #         # cbar=True
+        #     )
     print('%s: Finished' % pu.ctime())
