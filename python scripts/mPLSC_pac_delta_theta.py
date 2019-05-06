@@ -208,8 +208,14 @@ if __name__ == '__main__':
             brain_conjunction = conjunctions_no_sign[band]#conjunctions_sign_matters[band]
             for name in latent_names:
                 mags = brain_conjunction[name]
-                fname = fig_path + '/brain_%s.svg' % name
+                fname = fig_path + '/brain_%s.pdf' % name
                 custom_roi = mf.create_custom_roi(roi_path, rois, mags)
-                mf.plot_brain_saliences(custom_roi, minval=4, maxval=20, figpath=fname, cbar=False, cmap='PiYG_r')
+                mf.plot_brain_saliences(
+                    custom_roi,
+                    minval=4,
+                    maxval=20,
+                    figpath=fname,
+                    cbar=False,
+                    cmap='viridis')
 
     print('%s: Finished' % pu.ctime())
