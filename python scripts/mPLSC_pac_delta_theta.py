@@ -233,6 +233,9 @@ if __name__ == '__main__':
         conjunctions_no_sign[band_combo] = res_conj
         conj_hist_data.append(np.abs(np.ndarray.flatten(res_conj.values[:, :3])))
 
+    res_conj_band_combo = mf.single_table_conjunction(conjunctions_no_sign)
+    res_conj_band_combo.to_excel(fig_path + '/conjunction_over_bands.xlsx')
+
     _quick_hist(raw_hist_data, fig_path + '/brain_histogram.png')
     _quick_hist(conj_hist_data, fig_path + '/brain_histogram_conj.png')
     import nibabel as nib
@@ -260,4 +263,18 @@ if __name__ == '__main__':
                     figpath=fname,
                     cbar=True,
                     cmap=cmap)
+
+                if band_combo == bands_delta_theta_analysis[0]:
+                    mags_full = res_conj_band_combo[name]
+                    fname = fig_path + '/brain_full_%s.pdf' % name
+                    # custom_roi = mf.create_custom_roi(roi_path, rois, mags_full)
+                    # nib.save(custom_roi, fig_path + '/brain_full_%s.nii.gz' % name)
+                    custom_roi = nib.load(fig_path + '/brain_full_%s.nii.gz' % name)
+                    mf.plot_brain_saliences(
+                        custom_roi,
+                        minval=4,
+                        maxval=30,
+                        figpath = fname,
+                        cbar=True,
+                        cmap='viridis')
     print('%s: Finished' % pu.ctime())
