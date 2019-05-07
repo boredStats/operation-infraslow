@@ -101,7 +101,7 @@ if __name__ == '__main__':
     import proj_utils as pu
 
     pdir = pu._get_proj_dir()
-    fig_path = pdir + '/figures/'
+    fig_path = pdir + '/figures/mPLSC_power_all_sessions/'
     pdObj = pu.proj_data()
     rois = pdObj.roiLabels
     colors = pdObj.colors
@@ -114,13 +114,13 @@ if __name__ == '__main__':
         alpha_colors.append(tuple(color))
 
     ###Plotting saliences on the brain
-    cmap = 'viridis'
+    # cmap = 'autumn'
     # plot_brain_saliences(
-    #     custom_roi=fig_path + 'brain_LatentVar1.nii',
+    #     custom_roi=fig_path + 'LatentVar1.nii.gz',
     #     minval=4,
-    #     maxval=5.242388956,
-    #     figpath=fig_path + 'test_brain.png',
-    #     cbar=False,
+    #     maxval=40,
+    #     figpath=fig_path + 'test_brain_%s.png' %cmap,
+    #     cbar=True,
     #     cmap=cmap)
 
     ###Plotting saliences on a heatmap
