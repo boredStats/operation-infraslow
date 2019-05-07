@@ -175,7 +175,7 @@ if __name__ == '__main__':
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots()
-        ax.hist(data, bins=10)
+        ax.hist(data, bins=20)
         if fname is not None:
             fig.savefig(fname, bbox_inches='tight')
 
@@ -201,21 +201,63 @@ if __name__ == '__main__':
             xlim=40,
             fname=fig_path + '/behavior_fullbar_%s.svg' % name)
 
+
+    print('%s: Organizing brain saliences' % pu.ctime())
+    xls_path = ddir + 'MEG_delta_theta_pac.xlsx'
+    xls_data = pd.read_excel(xls_path)
+
+    bands_delta_theta_analysis = ['BOLD bandpass_Delta', 'Delta_Theta', 'Theta_Gamma']
+    sessions = ['Session1', 'Session2', 'Session3']
+    print('%s: Running conjunction on brain data' % pu.ctime())
+    conjunctions_no_sign = {}
+    x_saliences_z = output['x_saliences_zscores']
+    raw_hist_data, conj_hist_data = [], []
+    for band_combo in bands_delta_theta_analysis:
+        sals_per_sess = {}
+        for sess in sessions:
+            for brain_table in list(x_saliences_z):
+                if band_combo in brain_table and sess in brain_table:
+                    sals_per_sess[sess] = x_saliences_z[brain_table]
+
+        mf.save_xls(sals_per_sess, fig_path + '/brain_saliences_z_%s.xlsx' % band_combo)
+
+        for sess in sals_per_sess:
+            print(sals_per_sess[sess].values[:, :3].shape)
+            raw_hist_data.append(np.abs(np.ndarray.flatten(sals_per_sess[sess].values[:, :3])))
+
+        res_conj = mf.single_table_conjunction(
+            sals_per_sess,
+            comp='any',
+            thresh=4)
+        res_conj.to_excel(fig_path + '/conjunction_no_sign_%s.xlsx' % band_combo)
+        conjunctions_no_sign[band_combo] = res_conj
+        conj_hist_data.append(np.abs(np.ndarray.flatten(res_conj.values[:, :3])))
+
+    _quick_hist(raw_hist_data, fig_path + '/brain_histogram.png')
+    _quick_hist(conj_hist_data, fig_path + '/brain_histogram_conj.png')
+    import nibabel as nib
     check = input('Make brain figures? y/n ')
     if check == 'y':
         print('%s: Creating brain figures' % pu.ctime())
-        for band in bands:
-            brain_conjunction = conjunctions_no_sign[band]#conjunctions_sign_matters[band]
+        for band_combo in bands_delta_theta_analysis:
+            if bands_delta_theta_analysis[0] in band_combo:
+                cmap = 'autumn'
+            elif bands_delta_theta_analysis[1] in band_combo:
+                cmap = 'summer'
+            else:
+                cmap = 'winter'
+            brain_conjunction = conjunctions_no_sign[band_combo]#conjunctions_sign_matters[band_combo]
             for name in latent_names:
                 mags = brain_conjunction[name]
-                fname = fig_path + '/brain_%s.pdf' % name
-                custom_roi = mf.create_custom_roi(roi_path, rois, mags)
+                fname = fig_path + '/brain_%s_%s.pdf' % (band_combo, name)
+                # custom_roi = mf.create_custom_roi(roi_path, rois, mags)
+                custom_roi = nib.load(fig_path + '/brain_%s_%s.nii.gz' % (band_combo, name))
+                # nib.save(custom_roi, fig_path + '/brain_%s_%s.nii.gz' % (band_combo, name))
                 mf.plot_brain_saliences(
                     custom_roi,
                     minval=4,
-                    maxval=20,
+                    maxval=30,
                     figpath=fname,
-                    cbar=False,
-                    cmap='viridis')
-
+                    cbar=True,
+                    cmap=cmap)
     print('%s: Finished' % pu.ctime())
