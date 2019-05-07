@@ -314,7 +314,6 @@ def single_table_conjunction(saliences_dict, comp='any', thresh=0, return_avg=Tr
             index=row_names,
             columns=meg_sessions
             )
-
         res_conj = conjunction_analysis(
             conjunction_df,
             compare=comp,
