@@ -73,7 +73,8 @@ if __name__ == '__main__':
     meg_sess = ['Session1', 'Session2', 'Session3']
 
     pls_path = ddir + 'mPLSC_delta_theta_cfc.pkl'
-    check_0 = input('Run mPLSC? y/n ')
+    # check_0 = input('Run mPLSC? y/n ')
+    check_0 = 'n'
     if check_0 == 'y':
         xls_path = ddir + 'MEG_delta_theta_pac.xlsx'
         check_1 = input('Create excel sheets? y/n ')
@@ -161,7 +162,7 @@ if __name__ == '__main__':
                 if np.abs(unthresh_vals[r, c]) < 4:
                     thresh_vals[r, c] = 0
                 else:
-                    thresh_vals[r, c] = unthresh_vals[r, c]
+                    thresh_vals[r, c] = np.abs(unthresh_vals[r, c])
         thresh_df = pd.DataFrame(thresh_vals, index=unthresh_df.index, columns=list(unthresh_df))
         y_saliences_zscores_thresh[behavior_category] = thresh_df
     mf.save_xls(y_saliences_zscores_thresh, fig_path + '/behavior_saliences_z.xlsx')
@@ -239,7 +240,8 @@ if __name__ == '__main__':
     _quick_hist(raw_hist_data, fig_path + '/brain_histogram.png')
     _quick_hist(conj_hist_data, fig_path + '/brain_histogram_conj.png')
     import nibabel as nib
-    check = input('Make brain figures? y/n ')
+    # check = input('Make brain figures? y/n ')
+    check = 'y'
     if check == 'y':
         print('%s: Creating brain figures' % pu.ctime())
         for band_combo in bands_delta_theta_analysis:
@@ -251,18 +253,18 @@ if __name__ == '__main__':
                 cmap = 'winter'
             brain_conjunction = conjunctions_no_sign[band_combo]#conjunctions_sign_matters[band_combo]
             for name in latent_names:
-                mags = brain_conjunction[name]
-                fname = fig_path + '/brain_%s_%s.pdf' % (band_combo, name)
-                # custom_roi = mf.create_custom_roi(roi_path, rois, mags)
-                custom_roi = nib.load(fig_path + '/brain_%s_%s.nii.gz' % (band_combo, name))
-                # nib.save(custom_roi, fig_path + '/brain_%s_%s.nii.gz' % (band_combo, name))
-                mf.plot_brain_saliences(
-                    custom_roi,
-                    minval=4,
-                    maxval=30,
-                    figpath=fname,
-                    cbar=True,
-                    cmap=cmap)
+            #     mags = brain_conjunction[name]
+            #     fname = fig_path + '/brain_%s_%s.pdf' % (band_combo, name)
+            #     # custom_roi = mf.create_custom_roi(roi_path, rois, mags)
+            #     custom_roi = nib.load(fig_path + '/brain_%s_%s.nii.gz' % (band_combo, name))
+            #     # nib.save(custom_roi, fig_path + '/brain_%s_%s.nii.gz' % (band_combo, name))
+            #     mf.plot_brain_saliences(
+            #         custom_roi,
+            #         minval=4,
+            #         maxval=30,
+            #         figpath=fname,
+            #         cbar=True,
+            #         cmap=cmap)
 
                 if band_combo == bands_delta_theta_analysis[0]:
                     mags_full = res_conj_band_combo[name]
@@ -276,5 +278,5 @@ if __name__ == '__main__':
                         maxval=30,
                         figpath = fname,
                         cbar=True,
-                        cmap='viridis')
+                        cmap='Purples_r')
     print('%s: Finished' % pu.ctime())

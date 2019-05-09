@@ -195,7 +195,21 @@ if __name__ == "__main__":
     mf.save_xls(y_saliences, fig_path + '/behavior_saliences.xlsx')
     mf.save_xls(x_saliences, fig_path+'/brain_saliences.xlsx')
 
-    mf.save_xls(y_saliences_z, fig_path+'/behavior_saliences_z.xlsx')
+    y_saliences_zscores_thresh = {}
+    for behavior_category in list(y_saliences_z):
+        unthresh_df = y_saliences_z[behavior_category]
+        unthresh_vals = unthresh_df.values
+        thresh_vals = np.ndarray(shape=unthresh_vals.shape)
+        for r in range(len(unthresh_df.index)):
+            for c in range(len(list(unthresh_df))):
+                if np.abs(unthresh_vals[r, c]) < 4:
+                    thresh_vals[r, c] = 0
+                else:
+                    thresh_vals[r, c] = np.abs(unthresh_vals[r, c])
+        thresh_df = pd.DataFrame(thresh_vals, index=unthresh_df.index, columns=list(unthresh_df))
+        y_saliences_zscores_thresh[behavior_category] = thresh_df
+    mf.save_xls(y_saliences_zscores_thresh, fig_path + '/behavior_saliences_z.xlsx')
+
     mf.save_xls(x_saliences_z, fig_path+'/brain_saliences_z.xlsx')
 
     #Number of latent variables decided by scree
