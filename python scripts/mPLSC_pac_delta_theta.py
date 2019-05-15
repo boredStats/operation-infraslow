@@ -239,6 +239,38 @@ if __name__ == '__main__':
 
     _quick_hist(raw_hist_data, fig_path + '/brain_histogram.png')
     _quick_hist(conj_hist_data, fig_path + '/brain_histogram_conj.png')
+
+    print('%s: Extracting brain z-score metadata' % pu.ctime())
+    def print_zmeta(brain_conjunction, bands, latent_names, fname):
+        mins, maxs, mus, stds = {}, {}, {}, {}
+        for band in bands:
+            conjunction_data = brain_conjunction[band]
+            band_values = []
+            for name in latent_names:
+                mags = conjunction_data[name].values
+                # min_z = np.min(mags[np.nonzero(mags)])
+                # print(min_z)
+                band_values.append(mags)
+            # min_array = np.ma.masked_equal(band_values, 0.0, copy=False)
+            # mins[band] = np.min(min_array)
+            maxs[band] = np.max(band_values)
+            mus[band] = np.mean(band_values)
+            stds[band] = np.std(band_values, ddof=1)
+
+        if fname is not None:
+            with open(fname, 'w') as file:
+                # for band in bands:
+                # file.write('Min z-score for %s is %.4f\n' % (band, mins[band]))
+                for band in bands:
+                    file.write('Max z-score for %s is %.4f\n' % (band, maxs[band]))
+                for band in bands:
+                    file.write('Mean z-score for %s is %.4f\n' % (band, mus[band]))
+                for band in bands:
+                    file.write('Std-dev z-score for %s is %.4f\n' % (band, stds[band]))
+
+
+    print_zmeta(conjunctions_no_sign, bands_delta_theta_analysis, latent_names, fig_path + '/brain_zmeta.txt')
+
     import nibabel as nib
     # check = input('Make brain figures? y/n ')
     check = 'y'
