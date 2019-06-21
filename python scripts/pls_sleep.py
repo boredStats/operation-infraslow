@@ -37,7 +37,7 @@ def main():
     # print(X_c.shape, Y_c.shape)
     print(plsc.x_weights_.shape)
     print(plsc.y_weights_.shape)
-
+    # https://github.com/scikit-learn/scikit-learn/blob/7813f7efb/sklearn/cross_decomposition/pls_.py#L753
 
 main()
 
