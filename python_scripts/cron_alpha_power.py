@@ -8,7 +8,7 @@ from scipy.stats import zscore, norm
 from scipy.signal import butter, sosfilt
 
 def cron_alpha(array):
-    k = array.shape[1] #Columns are the groups
+    k = array.shape[1]  # Columns are the groups
     variances_sum = np.sum(np.var(array, axis=0, ddof=1))
     variances_total = np.var(np.sum(array, axis=1), ddof=1)
 
