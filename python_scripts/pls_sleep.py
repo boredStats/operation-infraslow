@@ -1,28 +1,28 @@
-# Running PLS-correlation using sklearn's PLSSVD function
-
-import sys
-sys.path.append("..")
+import proj_utils as pu
+import mPLSC_functions
+from sklearn.cross_decomposition import PLSSVD
+# import sys
+# sys.path.append("..")
 import numpy as np
 import pandas as pd
 import pickle as pkl
-import proj_utils as pu
-import mPLSC_functions as mf
-from sklearn.cross_decomposition import PLSSVD
+# import proj_utils as pu
+
 
 def main():
     pdir = pu._get_proj_dir()
     pdata = pu.proj_data()
     rois = pdata.roiLabels
-    colors = pdata.colors
+    # colors = pdata.colors
     meg_subj, meg_sessions = pdata.get_meg_metadata()
     print(meg_sessions)
     print('%s: Building tables of power data for MEG' % pu.ctime())
-    meg_data = mf.extract_average_power(hdf5_file=pdir + '/data/downsampled_MEG_truncated.hdf5',
-                                        sessions=[meg_sessions[0]],
-                                        subjects=meg_subj,
-                                        rois=rois,
-                                        image_type='MEG',
-                                        bp=True)
+    meg_data = mPLSC_functions.extract_average_power(hdf5_file=pdir + '/data/downsampled_MEG_truncated.hdf5',
+                                                     sessions=[meg_sessions[0]],
+                                                     subjects=meg_subj,
+                                                     rois=rois,
+                                                     image_type='MEG',
+                                                     bp=True)
     X = pd.concat(meg_data, axis=1)
 
     sleep_variables = ['PSQI_Comp1', 'PSQI_Comp2', 'PSQI_Comp3', 'PSQI_Comp4', 'PSQI_Comp5', 'PSQI_Comp6', 'PSQI_Comp7']
@@ -39,5 +39,5 @@ def main():
     print(plsc.y_weights_.shape)
     # https://github.com/scikit-learn/scikit-learn/blob/7813f7efb/sklearn/cross_decomposition/pls_.py#L753
 
-main()
 
+main()
