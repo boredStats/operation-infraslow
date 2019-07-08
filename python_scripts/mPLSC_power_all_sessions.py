@@ -94,6 +94,7 @@ def print_zmeta(brain_conjunction, latent_names, fname=None):
         print('Mean brain z-score is: %.4d' % mu)
         print('Std-dev brain z-score is: %.4d' % std)
 
+
 if __name__ == "__main__":
     import sys
     sys.path.append("..")
@@ -108,14 +109,17 @@ if __name__ == "__main__":
     rois = pdObj.roiLabels
     colors = pdObj.colors
     meg_subj, meg_sessions = pdObj.get_meg_metadata()
+    print(len(meg_subj))
     mri_subj, mri_sess = pdObj.get_mri_metadata()
+    print(len(mri_subj))
     subject_overlap = [s for s in mri_subj if s in meg_subj]
 
+    output_dir = ddir + '/mPLSC/'
     alpha = .001
     z_test = 0
-    output_file = ddir + '/mPLSC/mPLSC_power_all_sessions.pkl'
+    output_file = ddir + '/mPLSC/mPLSC_power_all_sessions.pkl'  #  '/mPLSC/mPLSC_power_all_sessions_sleep_only.pkl'# '/mPLSC/mPLSC_power_all_sessions_sustained_attention.pkl'
     check = input('Run multitable PLS-C? y/n ')
-    if check=='y':
+    if check is 'y':
         print('%s: Building subtables of power data for MEG' % pu.ctime())
         meg_data = mf.extract_average_power(
             hdf5_file=ddir+'/downsampled_MEG_truncated.hdf5',
@@ -129,7 +133,7 @@ if __name__ == "__main__":
 
         print('%s: Building subtables of behavior data' % pu.ctime())
         behavior_metadata = pd.read_csv(
-            ddir+'/b_variables_mPLSC.txt',
+            ddir+'/sustained_attention_vars.txt',
             delimiter='\t',
             header=None
             )
@@ -153,8 +157,6 @@ if __name__ == "__main__":
         print('%s: Running bootstrap testing on saliences' % pu.ctime())
         res_boot = p.mult_plsc_bootstrap_saliences(y_tables, x_tables, z_test)
         num_latent_vars = len(np.where(res_perm['p_values'] < alpha)[0])
-        latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
-
         print('%s: Organizing saliences' % pu.ctime())
         y_saliences, y_saliences_z = mf.organize_behavior_saliences(
             res_boot=res_boot,
@@ -214,13 +216,13 @@ if __name__ == "__main__":
 
     #Number of latent variables decided by scree
     num_latent_vars = 5#len(np.where(res_perm['p_values'] < alpha)[0])
-    latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
 
     print('%s: Plotting scree' % pu.ctime())
     mf.plotScree(res_perm['true_eigenvalues'],
                  res_perm['p_values'],
                  alpha=alpha,
                  fname=fig_path+'/scree.png')
+    mf.save_scree_data(res_perm, fig_path+'/scree_data.xlsx')
 
     print('%s: Running conjunction on brain data' % pu.ctime())
     brain_conjunction = mf.single_table_conjunction(x_saliences_z, comp='any', thresh=4)
@@ -258,9 +260,8 @@ if __name__ == "__main__":
         y_saliences_zscores_thresh[behavior_category] = thresh_df
 
     print('%s: Creating bar/table combo figure' % pu.ctime())
-    def _quick_hist(data, fname=None):
-        import matplotlib.pyplot as plt
 
+    def _quick_hist(data, fname=None):
         fig, ax = plt.subplots()
         ax.hist(data, bins=10)
         if fname is not None:
@@ -291,21 +292,21 @@ if __name__ == "__main__":
     print_zmeta(brain_conjunction, latent_names, fig_path+'/brain_z_meta.txt')
     check = input('Plot brains? y/n ')
     if check == 'y':
-        for name in latent_names:
-            mags = brain_conjunction[name]
-            mu = np.mean(mags)
-            # custom_roi = mf.create_custom_roi(roi_path, rois, mags)
-
-            custom_roi = nib.load(fig_path + '/%s.nii.gz' % name)
-            fname = fig_path + '/brain_%s.pdf' % name
-            fname = 'brain_%s.pdf' % name
-            mf.plot_brain_saliences(
-                custom_roi,
-                minval=4,
-                maxval=40,
-                figpath=fname,
-                cbar=False,
-                cmap='viridis')
+        # for name in latent_names:
+        #     mags = brain_conjunction[name]
+        #     mu = np.mean(mags)
+        #     # custom_roi = mf.create_custom_roi(roi_path, rois, mags)
+        #
+        #     custom_roi = nib.load(fig_path + '/%s.nii.gz' % name)
+        #     fname = fig_path + '/brain_%s.pdf' % name
+        #     fname = 'brain_%s.pdf' % name
+        #     mf.plot_brain_saliences(
+        #         custom_roi,
+        #         minval=4,
+        #         maxval=40,
+        #         figpath=fname,
+        #         cbar=False,
+        #         cmap='viridis')
 
         true_brain_means = pd.DataFrame(columns=latent_names)
         for name in latent_names:
@@ -320,22 +321,23 @@ if __name__ == "__main__":
             average_lv = np.mean(session_data, axis=1)
             true_mu = np.mean(average_lv)
             true_brain_means.loc['mu', name] = true_mu
-        #
-        # for name in latent_names:
-        #     mags = brain_conjunction[name]
-        #     mu = true_brain_means[name].values
-        #     _quick_hist(mags.values, fig_path + '/brain_hist_%s.png' % name)
-        #     print(mu)
-        #     # custom_roi = mf.create_custom_roi(roi_path, rois, mags)
-        #     # nib.save(custom_roi, fig_path + '/%s.nii.gz' % name)
-        #     custom_roi = nib.load(fig_path + '/%s.nii.gz' % name)
-        #     fname = fig_path + '/brain_%s' % name
-        #     mf.plot_brain_saliences_no_subplots(
-        #         custom_roi,
-        #         minval=4,
-        #         maxval=80,#mu,
-        #         figpath=fname,
-        #         cmap='viridis',
-        #         # cbar=True
-        #     )
+
+        for name in latent_names:
+            mags = brain_conjunction[name]
+            mu = true_brain_means[name].values
+            _quick_hist(mags.values, fig_path + '/brain_hist_%s.png' % name)
+            print(mu)
+            mags[mags < 40] = 0
+            custom_roi = mf.create_custom_roi(roi_path, rois, mags)
+            nib.save(custom_roi, fig_path + '/%s.nii.gz' % name)
+            custom_roi = nib.load(fig_path + '/%s.nii.gz' % name)
+            fname = fig_path + '/brain_%s' % name
+            mf.plot_brain_saliences_no_subplots(
+                custom_roi,
+                minval=4,
+                maxval=40,#mu,
+                figpath=fname,
+                cmap='viridis',
+                # cbar=True
+            )
     print('%s: Finished' % pu.ctime())

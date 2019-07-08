@@ -411,6 +411,25 @@ def plotScree(eigs, pvals=None, alpha=.05, percent=True, kaiser=False, fname=Non
         fig.savefig(fname, bbox_inches='tight')
     return fig, ax, ax2
 
+def save_scree_data(res_perm, fpath=None):
+    eigs = res_perm['true_eigenvalues']
+    pvals = res_perm['p_values']
+    percentVar = (np.multiply(100, eigs)) / np.sum(eigs)
+    cumulativeVar = np.zeros(shape=[len(percentVar)])
+    c = 0
+    for i, p in enumerate(percentVar):
+        c = c + p
+        cumulativeVar[i] = c
+    colnames = ['singular values', 'variance explained', 'cumulative variance', 'p_vals']
+    df = pd.DataFrame(columns=colnames)
+    df.index.name = 'latent variables'
+    df['singular values'] = eigs
+    df['variance explained'] = percentVar
+    df['cumulative variance'] = cumulativeVar
+    df['p_vals'] = pvals
+    if fpath is not None:
+        df.to_excel(fpath)
+
 def plot_radar2(saliences_series, max_val=None, choose=True, separate_neg=True, fname=None):
     """Plot behavior saliences in a radar plot
     """

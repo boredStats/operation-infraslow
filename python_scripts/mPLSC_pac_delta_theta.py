@@ -146,7 +146,7 @@ if __name__ == '__main__':
                  res_perm['p_values'],
                  alpha=.001,
                  fname=fig_path + '/scree.png')
-
+    mf.save_scree_data(res_perm, fig_path+'/scree_data.xlsx')
     num_latent_vars = 3#len(np.where(res_perm['p_values'] < alpha)[0])
     latent_names = ['LatentVar%d' % (n+1) for n in range(num_latent_vars)]
 
