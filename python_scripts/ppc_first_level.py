@@ -1,57 +1,79 @@
-# -*- coding: utf-8 -*-
-"""
-Get phase, amplitude data for the different frequency bands
-Run CFC with circular correlation
-
-Created on Wed Feb  6 09:54:17 2019
-"""
-
 import h5py
 import numpy as np
 import proj_utils as pu
+import pac_functions as pac
 from astropy.stats.circstats import circcorrcoef as circ_corr
+
+
+def extract_phase_amp_downsamp(meg_sess, meg_subj, rois, downsamp_file):
+    # Extract instantaneous phase, amplitude of downsampled data in the BOLD bandpass range
+    def _build_output(ts_data, fs, rois, band):
+        ts_len = len(ts_data[rois[0]])
+        phase_array = np.ndarray(shape=[ts_len, len(rois)])
+        amp_array = np.ndarray(shape=[ts_len, len(rois)])
+
+        for r, roi in enumerate(rois):
+            phase, amp = pac.get_phase_amp_data(ts_data[roi], fs, band, band)
+            phase_array[:, r] = phase
+            amp_array[:, r] = amp
+
+        return phase_mat, amp_mat
+
+    data_path = '../data/MEG_downsampled_phase_amp_data.hdf5'
+    fs = 1 / .72
+    for sess in meg_sess:
+        for subj in meg_subj:
+            b = 'BOLD bandpass'
+            band = (.01, .1)
+
+            out_file = h5py.File(data_path)
+            group_path = subj + '/' + sess + '/BOLD bandpass'
+            if group_path in out_file:
+                continue
+
+            print('%s: %s %s %s' % (pu.ctime(), sess, str(subj), b))
+            h5 = h5py.File(downsamp_file)
+            meg_data = h5[subj + '/MEG/' + sess + '/resampled_truncated'][...]
+            phase_mat, amp_mat = _build_output(meg_data, fs, rois, band)
+
+            grp = out_file.require_group(group_path)
+            grp.create_dataset('phase_data', data=phase_mat, compression='lzf')
+            grp.create_dataset('amplitude_data', data=amp_mat, compression='lzf')
+            out_file.close()
 
 
 def main():
     pd_obj = pu.proj_data()
     pdata = pd_obj.get_data()
     rois = pdata['roiLabels']
-    band_dict = pdata['bands']
     meg_subj, meg_sess = pd_obj.get_meg_metadata()
 
-    coupling_path = '../data/MEG_phase_phase_coupling.hdf5'
-    data_path = '../data/MEG_phase_amp_data.hdf5'
+    downsamp_file = '../data/downsampled_MEG_truncated.hdf5'
+    extract_phase_amp_downsamp(meg_sess, meg_subj, rois, downsamp_file)
 
-    # Full combination of phase-phase coupling
-    phase_bands = list(band_dict)
-    phase_bands_2 = list(band_dict)
+    output_path = '../data/MEG_phase_phase_coupling.hdf5'
+    data_path = '../data/MEG_downsampled_phase_amp_data.hdf5'
 
     for sess in meg_sess:
         for subj in meg_subj:
+            subj_ppc = np.ndarray(shape=(len(rois), len(rois)))
             data_file = h5py.File(data_path, 'r')
-            subj_data = data_file.get(subj + '/' + sess)
-            for r, roi in enumerate(rois):
-                cfc_file = h5py.File(coupling_path)
-                group_path = sess + '/' + subj + '/' + roi
-                if group_path in cfc_file:
-                    continue  # check if work has already been done
+            subj_data = data_file[subj + '/' + sess + '/BOLD bandpass/phase_data'][...]
 
-                r_mat = np.ndarray(shape=(len(phase_bands), len(phase_bands_2)))
-                for phase_index, phase_band in enumerate(phase_bands):
-                    p_grp = subj_data.get(phase_band)
-                    phase_spect = p_grp.get('phase_data')[:, r]
-                    for phase_index_2, phase_band_2 in enumerate(phase_bands_2):
-                        p2_grp = subj_data.get(phase_band_2)
-                        phase_spect_2 = p2_grp.get('phase_data')[:, r]
+            for r1 in range(len(rois)):
+                for r2 in range(len(rois)):
+                    phase_1 = subj_data[:, r1]
+                    phase_2 = subj_data[:, r2]
+                    rho = circ_corr(phase_1, phase_2)
+                    subj_ppc[r1, r2] = rho
 
-                        rho = circ_corr(phase_spect, phase_spect_2)
-                        r_mat[phase_index, phase_index_2] = rho
-
-                out_group = cfc_file.require_group(group_path)
-                out_group.create_dataset('r_vals', data=r_mat, compression='lzf')
-                cfc_file.close()
-
-            data_file.close()
-
+            ppc_file = h5py.File(output_path)
+            prog = sess + '/' + subj
+            if prog in ppc_file:
+                continue
+            out_group = ppc_file.require_group(prog)
+            out_group.create_dataset('ppc', data=subj_ppc, compression='lzf')
+            ppc_file.close()
+            
 
 main()
