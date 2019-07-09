@@ -202,7 +202,7 @@ def pls_psqi_with_power():
     logging.info('%s: Finished' % pu.ctime())
 
 
-def pls_psqi_with_pac():
+def pls_psqi_with_bold_alpha_pac():
     logging.info('%s: Running PLSC on PSQI components with PAC' % pu.ctime())
     fig_dir = '../figures/PLS/psqi_components/bold_alpha_PAC_attn_rois'
     if not os.path.isdir(fig_dir):
@@ -285,5 +285,5 @@ def pls_psqi_with_pac():
 
 
 # pls_psqi_with_power()
-pls_psqi_with_pac()
+pls_psqi_with_bold_alpha_pac()
 
