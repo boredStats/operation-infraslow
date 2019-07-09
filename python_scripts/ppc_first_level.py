@@ -7,23 +7,21 @@ from astropy.stats.circstats import circcorrcoef as circ_corr
 
 def extract_phase_amp_downsamp(meg_sess, meg_subj, rois, downsamp_file):
     # Extract instantaneous phase, amplitude of downsampled data in the BOLD bandpass range
-    def _build_output(ts_data, fs, rois, band):
-        ts_len = len(ts_data[rois[0]])
+    def _build_output(ts_data, fs, roi_list, phase_band):
+        ts_len = len(ts_data[:, 0])
         phase_array = np.ndarray(shape=[ts_len, len(rois)])
         amp_array = np.ndarray(shape=[ts_len, len(rois)])
 
-        for r, roi in enumerate(rois):
-            phase, amp = pac.get_phase_amp_data(ts_data[roi], fs, band, band)
+        for r, roi in enumerate(roi_list):
+            phase, amp = pac.get_phase_amp_data(ts_data[:, r], fs, phase_band, phase_band)
             phase_array[:, r] = phase
             amp_array[:, r] = amp
 
-        return phase_mat, amp_mat
+        return phase_array, amp_array
 
     data_path = '../data/MEG_downsampled_phase_amp_data.hdf5'
-    fs = 1 / .72
     for sess in meg_sess:
         for subj in meg_subj:
-            b = 'BOLD bandpass'
             band = (.01, .1)
 
             out_file = h5py.File(data_path)
@@ -31,10 +29,9 @@ def extract_phase_amp_downsamp(meg_sess, meg_subj, rois, downsamp_file):
             if group_path in out_file:
                 continue
 
-            print('%s: %s %s %s' % (pu.ctime(), sess, str(subj), b))
             h5 = h5py.File(downsamp_file)
             meg_data = h5[subj + '/MEG/' + sess + '/resampled_truncated'][...]
-            phase_mat, amp_mat = _build_output(meg_data, fs, rois, band)
+            phase_mat, amp_mat = _build_output(meg_data, fs=1/.72, roi_list=rois, phase_band=band)
 
             grp = out_file.require_group(group_path)
             grp.create_dataset('phase_data', data=phase_mat, compression='lzf')
@@ -74,6 +71,6 @@ def main():
             out_group = ppc_file.require_group(prog)
             out_group.create_dataset('ppc', data=subj_ppc, compression='lzf')
             ppc_file.close()
-            
+
 
 main()
