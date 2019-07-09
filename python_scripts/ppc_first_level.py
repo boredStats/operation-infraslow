@@ -5,51 +5,29 @@ Run CFC with circular correlation
 
 Created on Wed Feb  6 09:54:17 2019
 """
+
 import h5py
 import numpy as np
-import pac_functions as pac
-
-import sys
-sys.path.append("..")
 import proj_utils as pu
-
-def build_output(ts_data, fs, rois, band):
-    #Load in a subject, calculate phase/amplitude for each roi
-    ts_len = len(ts_data[rois[0]])
-    phase_mat = np.ndarray(shape=[ts_len, len(rois)])
-    amp_mat = np.ndarray(shape=[ts_len, len(rois)])
-
-    for r, roi in enumerate(rois):
-        phase, amp = pac.get_phase_amp_data(ts_data[roi], fs, band, band)
-        phase_mat[:, r] = phase
-        amp_mat[:, r] = amp
-
-    return phase_mat, amp_mat
+from astropy.stats.circstats import circcorrcoef as circ_corr
 
 
 print('%s: Starting' % pu.ctime())
 
 print('%s: Getting metadata, parameters' % pu.ctime())
-pdir = pu._get_proj_dir()
 pdObj = pu.proj_data()
-
 pData = pdObj.get_data()
 rois = pData['roiLabels']
 database = pData['database']
 band_dict = pData['bands']
 meg_subj, meg_sess = pdObj.get_meg_metadata()
-fs = 500
 comp = 'lzf'  # h5py compression param
 
 print('%s: Running phase-phase coupling' % pu.ctime())
-coupling_path = pdir + '/data/MEG_phase_phase_coupling.hdf5'
-data_path = pdir + '/data/MEG_phase_amp_data.hdf5'
+coupling_path = '../data/MEG_phase_phase_coupling.hdf5'
+data_path = '../data/MEG_phase_amp_data.hdf5'
 
-# BOLD bandpass with higher frequency only
-# slow_bands = ['BOLD bandpass']
-# reg_bands = ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma']
-
-# Full combination of phase-amplitude coupling
+# Full combination of phase-phase coupling
 phase_bands = list(band_dict)
 phase_bands_2 = list(band_dict)
 
@@ -73,7 +51,7 @@ for sess in meg_sess:
                     a_grp = subj_data.get(phase_band_2)
                     amp_spect = a_grp.get('phase_data')[:, r]
 
-                    r_val, p_val = pac.circCorr(phase_spect, amp_spect)
+                    r_val, p_val = circ_corr(phase_spect, amp_spect)
                     r_mat[phase_index, phase_index_2] = r_val
                     p_mat[phase_index, phase_index_2] = p_val
 
