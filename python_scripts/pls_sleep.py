@@ -155,7 +155,7 @@ def organize_brain_sals(x_zscores, rois, sessions, latent_vars, comp='any'):
 
 def pls_psqi_with_power():
     logging.info('%s: Running PLSC on PSQI components with power' % pu.ctime())
-    fig_dir = '../figures/PLS/psqi_components'
+    fig_dir = '../figures/PLS/psqi_components/power_full_ts'
     if not os.path.isdir(fig_dir):
         os.mkdir(fig_dir)
 
@@ -177,14 +177,16 @@ def pls_psqi_with_power():
     pres = p.permutation_tests(x, y)
     logging.info('%s: Running bootstrap tests' % pu.ctime())
     bres = p.bootstrap_tests(x, y)
+    res = {'permutation tests': pres, 'bootstrap_tests': bres}
     with open(fig_dir + '/pls_sleep.pkl', 'wb') as file:
-        pkl.dump([pres, bres], file)
+        pkl.dump(res, file)
 
     logging.info('%s: Loading raw output' % pu.ctime())
     with open(fig_dir + '/pls_sleep.pkl', 'rb') as file:
-        pres = pkl.load(file)[0]
-        bres = pkl.load(file)[1]
+        res = pkl.load(file)
 
+    pres = res['permutation tests']
+    bres = res['bootstrap_tests']
     eigs = pres['true_eigs']
     pvals = pres['p_values']
     alpha = .001
@@ -204,7 +206,7 @@ def pls_psqi_with_power():
 
 def pls_psqi_with_bold_alpha_pac():
     logging.info('%s: Running PLSC on PSQI components with PAC' % pu.ctime())
-    fig_dir = '../figures/PLS/psqi_components/bold_alpha_PAC_attn_rois'
+    fig_dir = '../figures/PLS/psqi_components/pac_bold_alpha'
     if not os.path.isdir(fig_dir):
         os.mkdir(fig_dir)
 
@@ -284,6 +286,63 @@ def pls_psqi_with_bold_alpha_pac():
     logging.info('%s: Finished' % pu.ctime())
 
 
-# pls_psqi_with_power()
-pls_psqi_with_bold_alpha_pac()
+def pls_psqi_with_power_roi_version():
+    logging.info('%s: Running PLSC on PSQI components with power' % pu.ctime())
+    fig_dir = '../figures/PLS/psqi_components/attn_rois_ppc'
+    if not os.path.isdir(fig_dir):
+        os.mkdir(fig_dir)
 
+    ppc_first_level = pd.read_excel('../data/attention_networks/ppc_first_level.xlsx', index_col=0)
+    self_connections, temp1, temp2 = [], [], []
+    for col in list(ppc_first_level):
+        if all(ppc_first_level[col] == 1):
+            self_connections.append(col)
+            continue
+        temp1.append(col.split(' ')[0])
+        temp2.append(col.split(' ')[1])
+    sessions = pd.unique(temp1)
+    connections = pd.unique(temp2)
+    meg_df = ppc_first_level.drop(columns=self_connections)
+    x = meg_df.values
+
+    sleep_variables = ['PSQI_Comp1', 'PSQI_Comp2', 'PSQI_Comp3', 'PSQI_Comp4', 'PSQI_Comp5', 'PSQI_Comp6', 'PSQI_Comp7']
+    behavior_raw = pd.read_excel('../data/hcp_behavioral.xlsx', index_col=0, sheet_name='cleaned')
+    sleep_df = behavior_raw[sleep_variables]
+    y = sleep_df.values
+
+    p = pls_functions.PLSC(n_iters=10000)
+    logging.info('%s: Running permutation tests' % pu.ctime())
+    pres = p.permutation_tests(x, y)
+    logging.info('%s: Running bootstrap tests' % pu.ctime())
+    bres = p.bootstrap_tests(x, y)
+    res = {'permutation tests': pres, 'bootstrap_tests': bres}
+    with open(fig_dir + '/pls_sleep.pkl', 'wb') as file:
+        pkl.dump(res, file)
+
+    logging.info('%s: Loading raw output' % pu.ctime())
+    with open(fig_dir + '/pls_sleep.pkl', 'rb') as file:
+        res = pkl.load(file)
+
+    pres = res['permutation tests']
+    bres = res['bootstrap_tests']
+    eigs = pres['true_eigs']
+    pvals = pres['p_values']
+    alpha = .001
+    nv = len(np.where(pvals < alpha)[0])
+    latent_vars = ['LV_%d' % (v+1) for v in range(nv)]
+
+    pls_functions.plot_scree(eigs=eigs, pvals=pvals, alpha=alpha, fname=fig_dir + '/scree.png')
+
+    behavior_df = pd.DataFrame(bres['y_zscores'][:nv, :], index=latent_vars, columns=sleep_variables)
+
+    behavior_df.to_excel(fig_dir+'/behavior_res.xlsx')
+    brain_res = organize_brain_sals(bres['x_zscores'], connections, sessions, latent_vars, comp='sign')
+    pu.save_xls(brain_res, fig_dir+'/brain_res.xlsx')
+
+    logging.info('%s: Finished' % pu.ctime())
+
+
+if __name__ == "__main__":
+    # pls_psqi_with_power()
+    # pls_psqi_with_bold_alpha_pac()
+    pls_psqi_with_power_roi_version()
