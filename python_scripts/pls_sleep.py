@@ -188,15 +188,14 @@ def pls_psqi_with_power(rois, sessions, fig_dir):
 
     behavior_df = pd.DataFrame(bres['y_zscores'][:nv, :], index=latent_vars, columns=sleep_variables)
     behavior_df.to_excel(fig_dir+'/behavior_res.xlsx')
-
-    brain_res = organize_brain_sals(bres['x_zscores'], rois, sessions, latent_vars, comp='sign')
+    brain_res = organize_brain_sals(bres['x_zscores'], rois, sessions, latent_vars, comp='any')
     pu.save_xls(brain_res, fig_dir+'/brain_res.xlsx')
 
     logging.info('%s: Finished' % pu.ctime())
 
 
 def pls_psqi_with_bold_alpha_pac(rois, meg_sess, meg_subj, fig_dir):
-    logging.info('%s: Running PLSC on PSQI components with PAC' % pu.ctime())
+    logging.info('%s: Running PLSC on PSQI components with phase-amplitude coupling' % pu.ctime())
     if not os.path.isdir(fig_dir):
         os.mkdir(fig_dir)
 
@@ -252,7 +251,7 @@ def pls_psqi_with_bold_alpha_pac(rois, meg_sess, meg_subj, fig_dir):
 
 
 def pls_psqi_with_ppc_roi_version(fig_dir):
-    logging.info('%s: Running PLSC on PSQI components with power' % pu.ctime())
+    logging.info('%s: Running PLSC on PSQI components with phase-phase coupling' % pu.ctime())
     if not os.path.isdir(fig_dir):
         os.mkdir(fig_dir)
 
@@ -284,7 +283,7 @@ def pls_psqi_with_ppc_roi_version(fig_dir):
 
 if __name__ == "__main__":
     rois = pu.proj_data().roiLabels
-    meg_sess, meg_subj = pu.proj_data.get_meg_metadata()
+    meg_subj, meg_sess = pu.proj_data.get_meg_metadata()
     pls_psqi_with_power(rois, meg_sess, fig_dir='../figures/PLS/psqi_components/power')
     pls_psqi_with_bold_alpha_pac(rois, meg_sess, meg_subj, fig_dir='../figures/PLS/psqi_components/pac_bold_to_alpha')
     pls_psqi_with_ppc_roi_version(fig_dir='../figures/PLS/psqi_components/ppc_network_rois')
