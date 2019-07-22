@@ -228,37 +228,37 @@ def main():
     rois = pdata.roiLabels
     meg_subj, meg_sess = pdata.get_meg_metadata()
     phase_amp_file = '../data/MEG_phase_amp_data.hdf5'
-    attn_rois = ['IPS1_R', 'FEF_R', 'TPOJ1_R', 'AVI_R']
+    attn_rois = ['IPS1_R', 'FEF_R', 'TPOJ1_R', 'AVI_R', '7m_R']  # ['IPS1_R', 'FEF_R', 'TPOJ1_R', 'AVI_R']
 
     # --Phase-phase coupling-- #
     first_level_tests_ppc = first_level_ppc(phase_amp_file, meg_subj, meg_sess, rois, attn_rois)
-    first_level_tests_ppc.to_excel('../figures/attention_networks/ppc_first_level.xlsx')
-    first_level_tests_ppc = pd.read_excel('../figures/attention_networks/ppc_first_level.xlsx', index_col=0)
+    first_level_tests_ppc.to_excel('../data/attention_networks/ppc_first_level.xlsx')
+    first_level_tests_ppc = pd.read_excel('../data/attention_networks/ppc_first_level.xlsx', index_col=0)
     second_level_res = second_level(first_level_tests_ppc)
     cron_alpha_res = cron_alpha_test(first_level_tests_ppc, attn_rois, meg_sess)
 
     res = {'first_level_tests': first_level_tests_ppc,
            'second_level_tests': second_level_res,
            'cron_alpha_tests': cron_alpha_res}
-    pu.save_xls(res, '../figures/attention_networks/ppc_second_level.xlsx')
+    pu.save_xls(res, '../data/attention_networks/ppc_second_level.xlsx')
 
     plot_grouped_boxplot(first_level_tests_ppc, attn_rois,
                          cron_alpha_df=cron_alpha_res,
                          fname='../figures/attention_networks/ppc_boxplot.pdf')
 
     # --Phase-amplitude coupling-- #
-    first_level_tests_ppc = first_level_pac(phase_amp_file, meg_subj, meg_sess, rois, attn_rois)
-    first_level_tests_ppc.to_excel('../figures/attention_networks/pac_first_level.xlsx')
-    first_level_tests_ppc = pd.read_excel('../figures/attention_networks/pac_first_level.xlsx', index_col=0)
-    second_level_res = second_level(first_level_tests_ppc)
-    cron_alpha_res = cron_alpha_test(first_level_tests_ppc, attn_rois, meg_sess)
+    first_level_tests_pac = first_level_pac(phase_amp_file, meg_subj, meg_sess, rois, attn_rois)
+    first_level_tests_pac.to_excel('../data/attention_networks/pac_first_level.xlsx')
+    first_level_tests_pac = pd.read_excel('../data/attention_networks/pac_first_level.xlsx', index_col=0)
+    second_level_res = second_level(first_level_tests_pac)
+    cron_alpha_res = cron_alpha_test(first_level_tests_pac, attn_rois, meg_sess)
 
-    res = {'first_level_tests': first_level_tests_ppc,
+    res = {'first_level_tests': first_level_tests_pac,
            'second_level_tests': second_level_res,
            'cron_alpha_tests': cron_alpha_res}
-    pu.save_xls(res, '../figures/attention_networks/pac_second_level.xlsx')
+    pu.save_xls(res, '../data/attention_networks/pac_second_level.xlsx')
 
-    plot_grouped_boxplot(first_level_tests_ppc, attn_rois,
+    plot_grouped_boxplot(first_level_tests_pac, attn_rois,
                          cron_alpha_df=cron_alpha_res,
                          fname='../figures/attention_networks/pac_boxplot.pdf')
 
