@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.stats import zscore
+from sklearn.utils import resample
 
 
 def center_matrix(a):
@@ -22,14 +23,30 @@ def cross_corr(x, y):
     return cov / np.dot(std_x[:, np.newaxis], std_y[np.newaxis, :])
 
 
-def perm_matrix(matrix):
-    # Permute the columns of a matrix
-    new_matrix = np.ndarray(shape=matrix.shape)
-    for col in range(matrix.shape[1]):
-        col_data = matrix[:, col]
-        perm_data = np.random.permutation(col_data)
-        new_matrix[:, col] = perm_data
-    return new_matrix
+def _center_scale_xy(X, Y, scale=True):
+    """ Center X, Y and scale if the scale parameter==True
+
+    Returns
+    -------
+        X, Y, x_mean, y_mean, x_std, y_std
+    """
+    # center
+    x_mean = X.mean(axis=0)
+    X -= x_mean
+    y_mean = Y.mean(axis=0)
+    Y -= y_mean
+    # scale
+    if scale:
+        x_std = X.std(axis=0, ddof=1)
+        x_std[x_std == 0.0] = 1.0
+        X /= x_std
+        y_std = Y.std(axis=0, ddof=1)
+        y_std[y_std == 0.0] = 1.0
+        Y /= y_std
+    else:
+        x_std = np.ones(X.shape[1])
+        y_std = np.ones(Y.shape[1])
+    return X, Y, x_mean, y_mean, x_std, y_std
 
 
 def resample_matrix(matrix):
@@ -50,8 +67,8 @@ def permutation_p(observed, perm_array):
 
 
 class PLSC:
-    def __init__(self, whiten='scale', n_iters=1000):
-        self.whiten = whiten  # Options are 'center', 'scale', or None
+    def __init__(self, center_scale='scale', n_iters=1000):
+        self.center_scale = center_scale  # Options are 'center', 'scale', or None
         self.n_iters = n_iters
 
     @staticmethod
@@ -70,15 +87,16 @@ class PLSC:
 
         u_ = perm_svd[0]
         v_ = perm_svd[2]
+        s_sq = perm_svd[1]   # <<<<<< continue from here !!!!!
 
         n, _, p = np.linalg.svd(np.dot(v.T, v_))
         q = np.dot(n, p.T)
 
         u_r = np.linalg.multi_dot((u_, s_sq, q))
         v_r = np.linalg.multi_dot((v_, s_sq, q))
-
+        print(v_r)
         try:
-            sum_of_squares = np.sum(u_r[:, :] ** 2, 1)
+            sum_of_squares = np.sum(u_r[:, :] ** 2, 0)
             s_r = np.sqrt(sum_of_squares)
         except RuntimeWarning as err:
             if 'overflow' in err:
@@ -121,43 +139,39 @@ class PLSC:
         return bootz
 
     @staticmethod
-    def _mplsc(x, y, whiten='scale'):
-        if whiten is None:
+    def _mplsc(x, y, center_scale='scale'):
+        if center_scale is None:
             clean_x = x
             clean_y = y
-        elif whiten is 'center':
-            clean_x = center_matrix(x)
-            clean_y = center_matrix(y)
-        elif whiten is 'scale':
-            clean_x = zscore(x, axis=0, ddof=1)
-            clean_y = zscore(y, axis=0, ddof=1)
+        elif center_scale is 'center':
+            clean_x, clean_y, _, _, _, _ = _center_scale_xy(x, y, scale=False)
+        elif center_scale is 'scale':
+            clean_x, clean_y, _, _, _, _ = _center_scale_xy(x, y, scale=True)
 
-        corr_xy = cross_corr(clean_y, clean_x)
+        corr_xy = np.dot(clean_x.T, clean_y)
         u, s, v = np.linalg.svd(corr_xy, full_matrices=False)
 
         return u, s, v.T
 
     def permutation_tests(self, x, y):
-        true_svd = self._mplsc(x, y, whiten=self.whiten)
+        true_svd = self._mplsc(x, y, center_scale=self.center_scale)
         true_eigs = true_svd[1]
 
         perm_eigs = np.ndarray(shape=(self.n_iters, len(true_eigs)))
         n = 0
         while n != self.n_iters:
             try:
-                perm_y = perm_matrix(y)
-                perm_x = perm_matrix(x)
-                perm_svd = self._mplsc(perm_x, perm_y, whiten=self.whiten)
+                perm_y = resample(y, replace=False)  # perm_matrix(y)
+                perm_x = resample(x, replace=False)  # perm_matrix(x)
+                perm_svd = self._mplsc(perm_x, perm_y, center_scale=self.center_scale)
             except np.linalg.LinAlgError:
                 continue  # Re-permute data if SVD doesn't converge
 
-            # TO-DO: Procrustes Rotation
             try:
                 _, rotated_eigs, _ = self._procrustes(true_svd, perm_svd)
             except OverflowError:
                 continue
-
-            perm_eigs[n, :] = rotated_eigs  # perm_svd[1]
+            perm_eigs[n, :] = rotated_eigs
             n += 1
 
         p_values = self._p_from_perm_mat(true_eigs, perm_eigs)
@@ -168,25 +182,25 @@ class PLSC:
         return res
 
     def bootstrap_tests(self, x, y):
-        true_svd = self._mplsc(x, y, whiten=self.whiten)
-        true_y_saliences = true_svd[0]
-        true_x_saliences = true_svd[2]
+        true_svd = self._mplsc(x, y, center_scale=self.center_scale)
+        true_y_saliences = true_svd[2]
+        true_x_saliences = true_svd[0]
 
         perm_x_cube = np.ndarray(shape=(true_x_saliences.shape[0], true_x_saliences.shape[1], self.n_iters))
         perm_y_cube = np.ndarray(shape=(true_y_saliences.shape[0], true_y_saliences.shape[1], self.n_iters))
         n = 0
         while n != self.n_iters:
             try:
-                resamp_y = resample_matrix(y)
-                resamp_x = resample_matrix(x)
-                resamp_svd = self._mplsc(resamp_x, resamp_y, whiten=self.whiten)
+                resamp_y = resample(y, replace=True)
+                resamp_x = resample(x, replace=True)
+                resamp_svd = self._mplsc(resamp_x, resamp_y, center_scale=self.center_scale)
             except np.linalg.LinAlgError:
                 continue  # Re-resample data if SVD doesn't converge
 
             # TO-DO: Procrustes Rotation
             try:
-                rotated_ysals = self._procrustes(true_svd, resamp_svd)[0]
-                rotated_xsals = self._procrustes(true_svd, resamp_svd)[2]
+                rotated_ysals = self._procrustes(true_svd, resamp_svd)[2]
+                rotated_xsals = self._procrustes(true_svd, resamp_svd)[0]
             except OverflowError:
                 continue
 
@@ -292,18 +306,18 @@ if __name__ == "__main__":
     behavior_raw = pd.read_excel('../data/hcp_behavioral.xlsx', index_col=0, sheet_name='cleaned')
 
     sleep_df = behavior_raw[sleep_variables]
-    y = sleep_df.values
+    y = sleep_df.values.astype(float)
 
     logging.info('%s: Running PLSC' % pu.ctime())
-    p = PLSC(n_iters=1000)
+    p = PLSC(n_iters=2)
     pres = p.permutation_tests(x, y)
 
     eigs = pres['true_eigs']
     pvals = pres['p_values']
-    plot_scree(eigs=eigs, pvals=pvals)
+    # plot_scree(eigs=eigs, pvals=pvals)
 
     bres = p.bootstrap_tests(x, y)
-    print(bres['y_zscores'][0, :])
-    print(bres['x_zscores'][:, 0])
+    print(bres['y_saliences'])
+    print(bres['x_zscores'].shape)
 
     logging.info('%s: Finished' % pu.ctime())
