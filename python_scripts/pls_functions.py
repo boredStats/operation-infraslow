@@ -1,31 +1,20 @@
 import numpy as np
-from scipy.stats import zscore
 from sklearn.utils import resample
 
 
-def center_matrix(a):
-    # Remove the means from each column in a matrix
-    return a - np.mean(a, axis=0)
-
-
-def cross_corr(x, y):
-    # Calculate Pearson's R the columns of two matrices
-
-    s = x.shape[0]
-    if s != y.shape[0]:
-        raise ValueError("x and y must have the same number of subjects")
-
-    std_x = x.std(0, ddof=s - 1)
-    std_y = y.std(0, ddof=s - 1)
-
-    cov = np.dot(center_matrix(x).T, center_matrix(y))
-
-    return cov / np.dot(std_x[:, np.newaxis], std_y[np.newaxis, :])
+def perm_matrix(matrix):
+    # Permute the columns of a matrix
+    new_matrix = np.ndarray(shape=matrix.shape)
+    for col in range(matrix.shape[1]):
+        col_data = matrix[:, col]
+        perm_data = np.random.permutation(col_data)
+        new_matrix[:, col] = perm_data
+    return new_matrix
 
 
 def _center_scale_xy(X, Y, scale=True):
     """ Center X, Y and scale if the scale parameter==True
-
+    Lifted from sklearn with love
     Returns
     -------
         X, Y, x_mean, y_mean, x_std, y_std
@@ -49,14 +38,16 @@ def _center_scale_xy(X, Y, scale=True):
     return X, Y, x_mean, y_mean, x_std, y_std
 
 
-def resample_matrix(matrix):
-    # Create a new matrix by resampling the rows of an old matrix
-    n_rows = matrix.shape[0]
-    resample_indices = np.random.randint(low=0, high=n_rows, size=n_rows)
-    new_matrix = np.ndarray(shape=matrix.shape)
-    for i, r in enumerate(resample_indices):
-        new_matrix[i, :] = matrix[r, :]
-    return new_matrix
+def norm_to_ss1(matrix):
+    # Alternate method for scaling data, see Abdi & Williams, 2010 (PLS methods)
+    centered = matrix - np.mean(matrix, axis=0)
+    sum_of_squares = np.sum(centered ** 2, axis=0)
+
+    rescaled_matrix = np.ndarray(shape=matrix.shape)
+    for i, ss in enumerate(sum_of_squares):
+        rescaled_matrix[:, i] = centered[:, i] / np.sqrt(ss)
+
+    return rescaled_matrix
 
 
 def permutation_p(observed, perm_array):
@@ -79,30 +70,29 @@ class PLSC:
             - axis rotation(change in order of components)
             - axis reflection(change in sign of loadings)
 
-        See McIntosh & Lobaugh, 2004 - 'Assessment of significance'
+        See McIntosh & Lobaugh, 2004; Milan & Whittaker, 1995
         """
-        s = true_svd[1]
-        v = true_svd[2]
-        s_sq = np.diagflat(s)
 
-        u_ = perm_svd[0]
-        v_ = perm_svd[2]
-        s_sq = perm_svd[1]   # <<<<<< continue from here !!!!!
+        v_orig = true_svd[2]
+        u_resamp = perm_svd[0]
+        v_resamp = perm_svd[2]
+        s_sq = np.diagflat(perm_svd[1])
 
-        n, _, p = np.linalg.svd(np.dot(v.T, v_))
+        n, _, p = np.linalg.svd(np.dot(v_orig.T, v_resamp))
         q = np.dot(n, p.T)
 
-        u_r = np.linalg.multi_dot((u_, s_sq, q))
-        v_r = np.linalg.multi_dot((v_, s_sq, q))
-        print(v_r)
+        u_rotated = np.dot(u_resamp, q)
+        v_rotated = np.dot(v_resamp, q)
+
+        v_rotated_scaled = np.linalg.multi_dot((v_resamp, s_sq, q))  # Calculate reflected, reordered singlular values
         try:
-            sum_of_squares = np.sum(u_r[:, :] ** 2, 0)
-            s_r = np.sqrt(sum_of_squares)
+            sum_of_squares = np.sum(v_rotated_scaled ** 2, 0)
+            s_rotated = np.sqrt(sum_of_squares)
         except RuntimeWarning as err:
             if 'overflow' in err:
                 raise OverflowError  # catch overflow to force re-permutation of data
 
-        return u_r, s_r, v_r
+        return u_rotated, s_rotated, v_rotated
 
     @staticmethod
     def _p_from_perm_mat(obs_vect, perm_array):
@@ -131,7 +121,10 @@ class PLSC:
 
     @staticmethod
     def _bootstrap_z(true_observations, permutation_cube):
-        # Calculate "z-scores" from a cube of randomized data
+        """Calculate 'z-scores' from a cube of permuation data
+
+        See Krishnan et al., 2011 for more information
+        """
         standard_dev = np.std(permutation_cube, axis=-1)
         standard_err = standard_dev / np.sqrt(permutation_cube.shape[2])
         bootz = np.divide(true_observations, standard_err)
@@ -147,10 +140,12 @@ class PLSC:
             clean_x, clean_y, _, _, _, _ = _center_scale_xy(x, y, scale=False)
         elif center_scale is 'scale':
             clean_x, clean_y, _, _, _, _ = _center_scale_xy(x, y, scale=True)
+        elif center_scale is 'ss1':
+            clean_x = norm_to_ss1(x)
+            clean_y = norm_to_ss1(y)
 
         corr_xy = np.dot(clean_x.T, clean_y)
         u, s, v = np.linalg.svd(corr_xy, full_matrices=False)
-
         return u, s, v.T
 
     def permutation_tests(self, x, y):
@@ -161,8 +156,8 @@ class PLSC:
         n = 0
         while n != self.n_iters:
             try:
-                perm_y = resample(y, replace=False)  # perm_matrix(y)
-                perm_x = resample(x, replace=False)  # perm_matrix(x)
+                perm_y = perm_matrix(y)  # resample(y, replace=False)  # perm_matrix(y)
+                perm_x = perm_matrix(x)  # resample(x, replace=False)  # perm_matrix(x)
                 perm_svd = self._mplsc(perm_x, perm_y, center_scale=self.center_scale)
             except np.linalg.LinAlgError:
                 continue  # Re-permute data if SVD doesn't converge
@@ -272,8 +267,8 @@ def plot_scree(eigs, pvals=None, alpha=.05, percent=True, kaiser=False, fname=No
         ax2.set_ylabel('Percentage of variance explained', fontsize='xx-large')
 
     if pvals is not None and len(pvals) == len(eigs):
-        p_check = [i for i,t in enumerate(pvals) if t < alpha]
-        eigen_check = [e for i, e in enumerate(eigs) for j in p_check if i==j]
+        p_check = [i for i, p in enumerate(pvals) if p < alpha]
+        eigen_check = [e for i, e in enumerate(eigs) for j in p_check if i == j]
         ax.plot(np.add(p_check, 1), eigen_check, 'ob', markersize=10)
 
     if kaiser:
@@ -309,15 +304,16 @@ if __name__ == "__main__":
     y = sleep_df.values.astype(float)
 
     logging.info('%s: Running PLSC' % pu.ctime())
-    p = PLSC(n_iters=2)
+    p = PLSC(n_iters=10000, center_scale='ss1')
     pres = p.permutation_tests(x, y)
 
     eigs = pres['true_eigs']
+    print(eigs)
     pvals = pres['p_values']
-    # plot_scree(eigs=eigs, pvals=pvals)
-
-    bres = p.bootstrap_tests(x, y)
-    print(bres['y_saliences'])
-    print(bres['x_zscores'].shape)
+    print(pvals)
+    plot_scree(eigs=eigs, pvals=pvals)
+    # bres = p.bootstrap_tests(x, y)
+    # print(bres['y_zscores'])
+    # print(bres['x_zscores'])
 
     logging.info('%s: Finished' % pu.ctime())
