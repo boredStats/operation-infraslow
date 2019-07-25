@@ -3,6 +3,14 @@ import numpy as np
 import pandas as pd
 import pickle as pkl
 import proj_utils as pu
+from scipy.signal import butter, sosfilt
+
+
+def _butter_filter(timeseries, fs, cutoffs, btype='band', order=4):
+    nyquist = fs / 2
+    butter_cut = np.divide(cutoffs, nyquist)  # butterworth param (digital)
+    sos = butter(order, butter_cut, output='sos', btype=btype)
+    return sosfilt(sos, timeseries)
 
 
 def calc_phase_amp_power(how='location'):
@@ -51,14 +59,6 @@ def calc_phase_amp_power(how='location'):
             pkl.dump(grand_df, file)
 
     elif how is 'bandpass':
-        from scipy.signal import butter, sosfilt
-
-        def _butter_filter(timeseries, fs, cutoffs, btype='band', order=4):
-            nyquist = fs / 2
-            butter_cut = np.divide(cutoffs, nyquist)  # butterworth param (digital)
-            sos = butter(order, butter_cut, output='sos', btype=btype)
-            return sosfilt(sos, timeseries)
-
         df_list = []
         for sess in sessions:
             session_colnames = ['%s %s' % (sess, r) for r in rois]
@@ -84,9 +84,33 @@ def calc_phase_amp_power(how='location'):
         with open('../data/MEG_infraslow_power_bandpass_calc.pkl', 'wb') as file:
             pkl.dump(grand_df, file)
 
+    elif how is 'truncated':
+        df_list = []
+        for sess in sessions:
+            session_colnames = ['%s %s' % (sess, r) for r in rois]
+            session_df = pd.DataFrame(index=subjects, columns=session_colnames)
+            for subj in subjects:
+                f = h5py.File('../data/downsampled_MEG_truncated.hdf5', 'r')
+                data = f[subj + '/MEG/' + sess + '/resampled_truncated'][...]
+                f.close()
+
+                data = _butter_filter(data, fs=500, cutoffs=[.01, .1])
+
+                fft_power = np.absolute(np.fft.rfft(data, axis=0)) ** 2
+                average_power = np.mean(fft_power, axis=0)
+
+                session_df.loc[subj] = average_power
+
+            df_list.append(session_df)
+
+        grand_df = pd.concat(df_list, axis=1)
+        with open('../data/MEG_infraslow_power_truncated_calc.pkl', 'wb') as file:
+            pkl.dump(grand_df, file)
+
     print('%s: Finished' % pu.ctime())
 
 
 if __name__ == "__main__":
     calc_phase_amp_power(how='location')
     calc_phase_amp_power(how='bandpass')
+    calc_phase_amp_power(how='truncated')
