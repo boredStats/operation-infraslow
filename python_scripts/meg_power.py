@@ -59,7 +59,7 @@ def calc_phase_amp_power():
         df_list.append(session_df)
 
     grand_df = pd.concat(df_list, axis=1)
-    with open('../data/MEG_phase_amp_power.pkl', 'wb') as file:
+    with open('../data/MEG_power.pkl', 'wb') as file:
         pkl.dump(grand_df, file)
 
     print('%s: Finished' % pu.ctime())
