@@ -215,3 +215,15 @@ def mirror_strfind(strings):
                 yuno.append(test)
 
     return yuki, yuno
+
+
+def save_xls(dict_df, path):
+    """
+    Save a dictionary of dataframes to an excel file, with each dataframe as a seperate page
+    """
+
+    writer = pd.ExcelWriter(path)
+    for key in list(dict_df):
+        dict_df[key].to_excel(writer, '%s' % key)
+
+    writer.save()
