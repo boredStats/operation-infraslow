@@ -18,6 +18,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from nilearn import surface, plotting, datasets
+import mPLSC_functions as mf
 
 
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +27,7 @@ logging.basicConfig(level=logging.INFO)
 def load_psqi_data():
     sleep_variables = ['PSQI_Comp1', 'PSQI_Comp2', 'PSQI_Comp3', 'PSQI_Comp4', 'PSQI_Comp5', 'PSQI_Comp6', 'PSQI_Comp7']
     behavior_raw = pd.read_excel('../data/hcp_behavioral.xlsx', index_col=0, sheet_name='cleaned')
-    sleep_df = behavior_raw[sleep_variables]
+    sleep_df = behavior_raw[sleep_variables].astype(float)
 
     return sleep_df, sleep_variables
 
@@ -105,7 +106,7 @@ def organize_brain_sals(x_zscores, roi_list, sessions, latent_vars, comp='any'):
             if compare == 'any':
                 if all(vals) and all(np.abs(vals) > thresh):
                     if return_avg:
-                        conjunction[r] = np.mean(vals)
+                        conjunction[r] = np.mean(np.abs(vals))
                     else:
                         conjunction[r] = 1
 
@@ -141,45 +142,43 @@ def organize_brain_sals(x_zscores, roi_list, sessions, latent_vars, comp='any'):
     return res_dict
 
 
-def plot_roi_saliences(roi_path, conjunction_result, fig_dir):
+def plot_roi_saliences(rois, conjunction_result, fig_dir, cmap=None, maxv=40, create_rois=False):
+    roi_path = '../data/glasser_atlas/'
     for lv in list(conjunction_result):
-        mags = conjunction_result[lv]
-        # mags[mags < 40] = 0
-        custom_roi = create_custom_roi(roi_path, rois, mags)
-        nib.save(custom_roi, fig_dir + '/%s.nii.gz' % lv)
-        custom_roi = nib.load(fig_dir + '/%s.nii.gz' % lv)
+        if create_rois:
+            mags = conjunction_result[lv]
+            mags[mags < 40] = 0
+            custom_roi = create_custom_roi(roi_path, rois, mags)
+            nib.save(custom_roi, fig_dir + '/%s.nii.gz' % lv)
+        else:
+            custom_roi = nib.load(fig_dir + '/%s.nii.gz' % lv)
         fname = fig_dir + '/brain_%s' % lv
-        plot_brain_saliences(custom_roi, minval=4, maxval=40, figpath=fname, cmap='viridis', cbar=False)
+        plot_brain_saliences(custom_roi, minval=4, maxval=maxv, figpath=fname, cmap=cmap, cbar=False)
 
 
-def pls_psqi_with_power(rois, sessions, fig_dir):
+def pls_psqi_with_power(sessions, rois, fig_dir, run_check=True):
     logging.info('%s: Running PLSC on PSQI components with power' % pu.ctime())
     if not os.path.isdir(fig_dir):
         os.mkdir(fig_dir)
 
-    with open('../data/MEG_power_data.pkl', 'rb') as file:
-        meg_data = pkl.load(file)
-    meg_list = [meg_data[sess] for sess in list(meg_data)]
-    meg_df = pd.concat(meg_list, axis=1)
+    meg_df = pd.read_excel('../data/MEG_infraslow_power.xlsx', sheet_name='location', index_col=0)
+    sleep_df, sleep_variables = load_psqi_data()
 
-    sleep_variables = ['PSQI_Comp1', 'PSQI_Comp2', 'PSQI_Comp3', 'PSQI_Comp4', 'PSQI_Comp5', 'PSQI_Comp6', 'PSQI_Comp7']
-    behavior_raw = pd.read_excel('../data/hcp_behavioral.xlsx', index_col=0, sheet_name='cleaned')
-    sleep_df = behavior_raw[sleep_variables]
-
-    p = pls_functions.PLSC(n_iters=10000)
-    logging.info('%s: Running permutation tests' % pu.ctime())
-    pres = p.permutation_tests(meg_df.values, sleep_df.values)
-    logging.info('%s: Running bootstrap tests' % pu.ctime())
-    bres = p.bootstrap_tests(meg_df.values, sleep_df.values)
-    res = {'permutation tests': pres, 'bootstrap_tests': bres}
-    with open(fig_dir + '/pls_sleep.pkl', 'wb') as file:
-        pkl.dump(res, file)
-
-    logging.info('%s: Loading raw output' % pu.ctime())
-    with open(fig_dir + '/pls_sleep.pkl', 'rb') as file:
-        res = pkl.load(file)
-    pres = res['permutation tests']
-    bres = res['bootstrap_tests']
+    if run_check:
+        p = pls_functions.PLSC(n_iters=10000, center_scale='ss1')
+        logging.info('%s: Running permutation tests' % pu.ctime())
+        pres = p.permutation_tests(meg_df.values, sleep_df.values)
+        logging.info('%s: Running bootstrap tests' % pu.ctime())
+        bres = p.bootstrap_tests(meg_df.values, sleep_df.values)
+        res = {'permutation tests': pres, 'bootstrap_tests': bres}
+        with open(fig_dir + '/pls_sleep.pkl', 'wb') as file:
+            pkl.dump(res, file)
+    else:
+        logging.info('%s: Loading raw output' % pu.ctime())
+        with open(fig_dir + '/pls_sleep.pkl', 'rb') as file:
+            res = pkl.load(file)
+        pres = res['permutation tests']
+        bres = res['bootstrap_tests']
 
     alpha = .001
     nv = len(np.where(pres['p_values'] < alpha)[0])
@@ -188,22 +187,31 @@ def pls_psqi_with_power(rois, sessions, fig_dir):
 
     behavior_df = pd.DataFrame(bres['y_zscores'][:nv, :], index=latent_vars, columns=sleep_variables)
     behavior_df.to_excel(fig_dir+'/behavior_res.xlsx')
-    brain_res = organize_brain_sals(bres['x_zscores'], rois, sessions, latent_vars, comp='any')
+    brain_res = organize_brain_sals(bres['x_zscores'], rois, sessions, latent_vars, comp='sign')
     pu.save_xls(brain_res, fig_dir+'/brain_res.xlsx')
+
+    conj = brain_res['brain_conjunction']
+    plot_roi_saliences(rois, conj, fig_dir, cmap=None, maxv=80, create_rois=True)
 
     logging.info('%s: Finished' % pu.ctime())
 
 
-def pls_psqi_with_bold_alpha_pac(rois, meg_sess, meg_subj, fig_dir):
+def pls_psqi_with_bold_alpha_pac(fig_dir, run_check=True):
     logging.info('%s: Running PLSC on PSQI components with phase-amplitude coupling' % pu.ctime())
     if not os.path.isdir(fig_dir):
         os.mkdir(fig_dir)
 
+    # Extracting metadata
+    h5_file = h5py.File('../data/MEG_phase_amp_coupling.hdf5')
+    sessions = list(h5_file)
+    meg_subj = list(h5_file[sessions[0]])
+    rois = list(h5_file[sessions[0] + '/' + meg_subj[0]])
+    h5_file.close()
+
     bold_pac_index = 0
     alpha_pac_index = 3
-
     meg_data = []
-    for sess in meg_sess:
+    for sess in sessions:
         session_df = pd.DataFrame(index=meg_subj, columns=rois)
         for roi in rois:
             h5_file = h5py.File('../data/MEG_phase_amp_coupling.hdf5')
@@ -217,20 +225,21 @@ def pls_psqi_with_bold_alpha_pac(rois, meg_sess, meg_subj, fig_dir):
 
     sleep_df, sleep_variables = load_psqi_data()
 
-    p = pls_functions.PLSC(n_iters=10000)
-    logging.info('%s: Running permutation tests' % pu.ctime())
-    pres = p.permutation_tests(meg_df.to_numpy().astype(float), sleep_df.values)
-    logging.info('%s: Running bootstrap tests' % pu.ctime())
-    bres = p.bootstrap_tests(meg_df.to_numpy().astype(float), sleep_df.values)
-    res = {'permutation tests': pres, 'bootstrap_tests': bres}
-    with open(fig_dir + '/pls_sleep.pkl', 'wb') as file:
-        pkl.dump(res, file)
-
-    logging.info('%s: Loading raw output' % pu.ctime())
-    with open(fig_dir + '/pls_sleep.pkl', 'rb') as file:
-        res = pkl.load(file)
-    pres = res['permutation tests']
-    bres = res['bootstrap_tests']
+    if run_check:
+        p = pls_functions.PLSC(n_iters=10000)
+        logging.info('%s: Running permutation tests' % pu.ctime())
+        pres = p.permutation_tests(meg_df.to_numpy().astype(float), sleep_df.values)
+        logging.info('%s: Running bootstrap tests' % pu.ctime())
+        bres = p.bootstrap_tests(meg_df.to_numpy().astype(float), sleep_df.values)
+        res = {'permutation tests': pres, 'bootstrap_tests': bres}
+        with open(fig_dir + '/pls_sleep.pkl', 'wb') as file:
+            pkl.dump(res, file)
+    else:
+        logging.info('%s: Loading raw output' % pu.ctime())
+        with open(fig_dir + '/pls_sleep.pkl', 'rb') as file:
+            res = pkl.load(file)
+        pres = res['permutation tests']
+        bres = res['bootstrap_tests']
 
     alpha = .001
     nv = len(np.where(pres['p_values'] < alpha)[0])
@@ -240,12 +249,11 @@ def pls_psqi_with_bold_alpha_pac(rois, meg_sess, meg_subj, fig_dir):
     behavior_df = pd.DataFrame(bres['y_zscores'][:nv, :], index=latent_vars, columns=sleep_variables)
     behavior_df.to_excel(fig_dir+'/behavior_res.xlsx')
 
-    brain_res = organize_brain_sals(np.abs(bres['x_zscores']), rois, meg_sess, latent_vars, comp='any')
+    brain_res = organize_brain_sals(np.abs(bres['x_zscores']), rois, sessions, latent_vars, comp='sign')
     pu.save_xls(brain_res, fig_dir+'/brain_res.xlsx')
 
-    roi_path = '../data/glasser_atlas/'
-    conj_res = brain_res['brain_conjunction']
-    plot_roi_saliences(roi_path, conj_res, fig_dir)
+    conj = brain_res['brain_conjunction']
+    plot_roi_saliences(rois, conj, fig_dir, cmap='viridis', maxv=40, create_rois=False)
 
     logging.info('%s: Finished' % pu.ctime())
 
@@ -282,8 +290,8 @@ def pls_psqi_with_ppc_roi_version(fig_dir):
 
 
 if __name__ == "__main__":
-    rois = pu.proj_data().roiLabels
     meg_subj, meg_sess = pu.proj_data.get_meg_metadata()
-    pls_psqi_with_power(rois, meg_sess, fig_dir='../figures/PLS/psqi_components/power')
-    pls_psqi_with_bold_alpha_pac(rois, meg_sess, meg_subj, fig_dir='../figures/PLS/psqi_components/pac_bold_to_alpha')
-    pls_psqi_with_ppc_roi_version(fig_dir='../figures/PLS/psqi_components/ppc_network_rois')
+    rois = pu.proj_data().roiLabels
+    pls_psqi_with_power(meg_sess, rois, fig_dir='../figures/PLS/psqi_components/power_recalculated', run_check=True)
+    # pls_psqi_with_bold_alpha_pac(fig_dir='../figures/PLS/psqi_components/pac_bold_alpha', run_check=False)
+    # pls_psqi_with_ppc_roi_version(fig_dir='../figures/PLS/psqi_components/ppc_network_rois')
