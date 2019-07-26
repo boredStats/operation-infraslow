@@ -45,11 +45,12 @@ def main():
     rois = pdata['roiLabels']
     meg_subj, meg_sess = pd_obj.get_meg_metadata()
 
-    downsamp_file = '../data/downsampled_MEG_truncated.hdf5'
-    extract_phase_amp_downsamp(meg_sess, meg_subj, rois, downsamp_file)
+    # downsamp_file = '../data/downsampled_MEG_truncated.hdf5'
+    # extract_phase_amp_downsamp(meg_sess, meg_subj, rois, downsamp_file)
 
+    # data_path = '../data/MEG_downsampled_phase_amp_data.hdf5'
+    data_path = '../data/MEG_phase_amp_data.hdf5'
     output_path = '../data/MEG_phase_phase_coupling.hdf5'
-    data_path = '../data/MEG_downsampled_phase_amp_data.hdf5'
 
     for sess in meg_sess:
         for subj in meg_subj:
