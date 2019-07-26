@@ -12,6 +12,20 @@ def perm_matrix(matrix):
     return new_matrix
 
 
+def resample_matrices(a, b):
+    # Resample matrices with replacement (resampling applied to both matrices)
+    n_rows = a.shape[0]
+    new_indices = np.random.randint(low=0, high=n_rows)
+    a_ = np.ndarray(shape=a.shape)
+    b_ = np.ndarray(shape=b.shape)
+
+    for n in range(n_rows):
+        resample_index = new_indices[n]
+        a_[n, :] = a[resample_index, :]
+        b_[n, :] = b[resample_index, :]
+
+    return a_, b_
+
 def _center_scale_xy(X, Y, scale=True):
     """ Center X, Y and scale if the scale parameter==True
     Lifted from sklearn with love
@@ -146,6 +160,7 @@ class PLSC:
 
         corr_xy = np.dot(clean_x.T, clean_y)
         u, s, v = np.linalg.svd(corr_xy, full_matrices=False)
+
         return u, s, v.T
 
     def permutation_tests(self, x, y):
@@ -186,8 +201,9 @@ class PLSC:
         n = 0
         while n != self.n_iters:
             try:
-                resamp_y = resample(y, replace=True)
-                resamp_x = resample(x, replace=True)
+                # resamp_y = resample(y, replace=True)
+                # resamp_x = resample(x, replace=True)
+                resamp_x, resamp_y = resample_matrices(x, y)
                 resamp_svd = self._mplsc(resamp_x, resamp_y, center_scale=self.center_scale)
             except np.linalg.LinAlgError:
                 continue  # Re-resample data if SVD doesn't converge
@@ -304,14 +320,14 @@ if __name__ == "__main__":
     y = sleep_df.values.astype(float)
 
     logging.info('%s: Running PLSC' % pu.ctime())
-    p = PLSC(n_iters=10000, center_scale='ss1')
+    p = PLSC(n_iters=1000, center_scale='ss1')
     pres = p.permutation_tests(x, y)
 
-    eigs = pres['true_eigs']
-    print(eigs)
-    pvals = pres['p_values']
-    print(pvals)
-    plot_scree(eigs=eigs, pvals=pvals)
+    # eigs = pres['true_eigs']
+    # print(eigs)
+    # pvals = pres['p_values']
+    # print(pvals)
+    # plot_scree(eigs=eigs, pvals=pvals)
     # bres = p.bootstrap_tests(x, y)
     # print(bres['y_zscores'])
     # print(bres['x_zscores'])
