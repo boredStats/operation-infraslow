@@ -55,8 +55,7 @@ def calc_phase_amp_power(how='location'):
             df_list.append(session_df)
 
         grand_df = pd.concat(df_list, axis=1)
-        with open('../data/MEG_infraslow_power_location_calc.pkl', 'wb') as file:
-            pkl.dump(grand_df, file)
+        return grand_df
 
     elif how is 'bandpass':
         df_list = []
@@ -81,8 +80,7 @@ def calc_phase_amp_power(how='location'):
             df_list.append(session_df)
 
         grand_df = pd.concat(df_list, axis=1)
-        with open('../data/MEG_infraslow_power_bandpass_calc.pkl', 'wb') as file:
-            pkl.dump(grand_df, file)
+        return grand_df
 
     elif how is 'truncated':
         df_list = []
@@ -104,13 +102,18 @@ def calc_phase_amp_power(how='location'):
             df_list.append(session_df)
 
         grand_df = pd.concat(df_list, axis=1)
-        with open('../data/MEG_infraslow_power_truncated_calc.pkl', 'wb') as file:
-            pkl.dump(grand_df, file)
+        return grand_df
 
     print('%s: Finished' % pu.ctime())
 
 
 if __name__ == "__main__":
-    calc_phase_amp_power(how='location')
-    calc_phase_amp_power(how='bandpass')
-    calc_phase_amp_power(how='truncated')
+    location_df = calc_phase_amp_power(how='location')
+    bp_df = calc_phase_amp_power(how='bandpass')
+    trunc_df = calc_phase_amp_power(how='truncated')
+
+    power_dict = {'location': location_df,
+                  'bandpass': bp_df,
+                  'truncated': trunc_df}
+
+    pu.save_xls(power_dict, '../data/MEG_infraslow_power.xlsx')
