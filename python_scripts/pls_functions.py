@@ -15,7 +15,7 @@ def perm_matrix(matrix):
 def resample_matrices(a, b):
     # Resample matrices with replacement (resampling applied to both matrices)
     n_rows = a.shape[0]
-    new_indices = np.random.randint(low=0, high=n_rows)
+    new_indices = np.random.randint(low=0, high=n_rows, size=n_rows)
     a_ = np.ndarray(shape=a.shape)
     b_ = np.ndarray(shape=b.shape)
 
@@ -25,6 +25,7 @@ def resample_matrices(a, b):
         b_[n, :] = b[resample_index, :]
 
     return a_, b_
+
 
 def _center_scale_xy(X, Y, scale=True):
     """ Center X, Y and scale if the scale parameter==True
