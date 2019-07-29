@@ -143,6 +143,33 @@ def plot_roi_saliences(rois, conj_res, fig_dir, cmap=None, maxv=40, create_rois=
         plot_brains(custom_roi, minval=4, maxval=maxv, figpath=fname, cmap=cmap)
 
 
+def mirror_strfind(strings):
+    # Given all possible combinations of strings in a list, find the mirrored strings
+    checkdict = {}  # Creating dict for string tests
+    for string_1 in strings:
+        for string_2 in strings:
+            checkdict['%s-%s' % (string_1, string_2)] = False
+
+    clean, mirror = [], []
+    for string_1 in strings:
+        for string_2 in strings:
+            test = '%s-%s' % (string_1, string_2)
+            mir = '%s-%s' % (string_2, string_1)
+            if string_1 == string_2:
+                checkdict[test] = True
+                mirror.append(test)
+                continue
+
+            if not checkdict[test] and not checkdict[mir]:
+                checkdict[test] = True
+                checkdict[mir] = True
+                clean.append(test)
+            else:
+                mirror.append(test)
+
+    return clean, mirror
+
+
 def run_pls(x, y, output_dir, n_iters=10000, scaling='ss1'):
     p = pls_functions.PLSC(n_iters=n_iters, center_scale=scaling)
     logging.info('%s: Running permutation tests' % pu.ctime())

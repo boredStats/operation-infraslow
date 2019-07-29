@@ -190,33 +190,6 @@ def cron_alpha(array):
     return (k / (k-1)) * (1 - (variances_sum / variances_total))
 
 
-def mirror_strfind(strings):
-    # Given all possible combinations of strings in a list, find the mirrored strings
-    checkdict = {}  # Creating dict for string tests
-    for string_1 in strings:
-        for string_2 in strings:
-            checkdict['%s_%s' % (string_1, string_2)] = False
-
-    yuki, yuno = [], []
-    for string_1 in strings:
-        for string_2 in strings:
-            test = '%s_%s' % (string_1, string_2)
-            mir = '%s_%s' % (string_2, string_1)
-            if string_1 == string_2:
-                checkdict[test] = True
-                yuno.append(test)
-                continue
-
-            if not checkdict[test] and not checkdict[mir]:
-                checkdict[test] = True
-                checkdict[mir] = True
-                yuki.append(test)
-            else:
-                yuno.append(test)
-
-    return yuki, yuno
-
-
 def save_xls(dict_df, path):
     """
     Save a dictionary of dataframes to an excel file, with each dataframe as a seperate page
