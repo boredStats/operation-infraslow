@@ -77,41 +77,6 @@ class PLSC:
         self.n_iters = n_iters
 
     @staticmethod
-    def _procrustes(true_svd, perm_svd):
-        """
-        Apply a Procrustes rotation to resampled SVD results
-        This rotation is to correct for:
-            - axis rotation(change in order of components)
-            - axis reflection(change in sign of loadings)
-
-        See McIntosh & Lobaugh, 2004; Milan & Whittaker, 1995
-        """
-
-        v_orig = true_svd[2]
-        u_resamp = perm_svd[0]
-        v_resamp = perm_svd[2]
-
-        n, _, p = np.linalg.svd(np.dot(v_orig.T, v_resamp))
-        q = np.dot(n, p.T)
-
-        # u_rotated = np.dot(u_resamp, q)
-        # v_rotated = np.dot(v_resamp, q)
-
-        u_scaled = np.dot(u_resamp, np.diagflat(perm_svd[1]))
-        v_scaled = np.dot(v_resamp, np.diagflat(perm_svd[1]))
-
-        u_rotated = np.dot(u_scaled, q)
-        v_rotated = np.dot(v_scaled, q)
-        try:
-            sum_of_squares = np.sum(v_rotated ** 2, 0)
-            s_rotated = np.sqrt(sum_of_squares)
-        except RuntimeWarning as err:
-            if 'overflow' in err:
-                raise OverflowError  # catch overflow to force re-permutation of data
-
-        return u_rotated, s_rotated, v_rotated
-
-    @staticmethod
     def _p_from_perm_mat(obs_vect, perm_array):
         """Calculate p-values columnwise
 
@@ -180,12 +145,7 @@ class PLSC:
             except np.linalg.LinAlgError:
                 continue  # Re-permute data if SVD doesn't converge
 
-            try:
-                _, rotated_eigs, _ = self._procrustes(true_svd, perm_svd)
-            except OverflowError:
-                continue
-            # perm_eigs[n, :] = perm_svd[1]
-            perm_eigs[n, :] = rotated_eigs
+            perm_eigs[n, :] = perm_svd[1]
             n += 1
 
         p_values = self._p_from_perm_mat(true_eigs, perm_eigs)
@@ -216,17 +176,8 @@ class PLSC:
             except np.linalg.LinAlgError:
                 continue  # Re-resample data if SVD doesn't converge
 
-            try:
-                rotated_ysals = self._procrustes(true_svd, resamp_svd)[2]
-                rotated_xsals = self._procrustes(true_svd, resamp_svd)[0]
-
-                # rotated_ysals = resamp_svd[2]
-                # rotated_xsals = resamp_svd[0]
-            except OverflowError:
-                continue
-
-            perm_y_cube[:, :, n] = rotated_ysals
-            perm_x_cube[:, :, n] = rotated_xsals
+            perm_y_cube[:, :, n] = resamp_svd[2]
+            perm_x_cube[:, :, n] = resamp_svd[0]
             n += 1
 
         x_zscores = self._bootstrap_z(true_x_saliences, perm_x_cube)
