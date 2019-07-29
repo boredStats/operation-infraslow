@@ -1,21 +1,20 @@
 import numpy as np
 from sklearn.utils import resample
+from copy import deepcopy
 
 
 def perm_matrix(matrix):
-    # Permute the columns of a matrix
-    new_matrix = np.ndarray(shape=matrix.shape)
+    # Permute each column of a matrix
+    new_matrix = deepcopy(matrix)
     for col in range(matrix.shape[1]):
-        col_data = matrix[:, col]
-        perm_data = np.random.permutation(col_data)
-        new_matrix[:, col] = perm_data
+        np.random.shuffle(new_matrix[:, col])
     return new_matrix
 
 
 def resample_matrices(a, b):
     # Resample matrices with replacement (resampling applied to both matrices)
     n_rows = a.shape[0]
-    new_indices = np.random.randint(low=0, high=n_rows, size=n_rows)
+    new_indices = np.random.permutation(np.arange(n_rows))  # (low=0, high=n_rows, size=n_rows)
     a_ = np.ndarray(shape=a.shape)
     b_ = np.ndarray(shape=b.shape)
 
@@ -91,17 +90,20 @@ class PLSC:
         v_orig = true_svd[2]
         u_resamp = perm_svd[0]
         v_resamp = perm_svd[2]
-        s_sq = np.diagflat(perm_svd[1])
 
         n, _, p = np.linalg.svd(np.dot(v_orig.T, v_resamp))
         q = np.dot(n, p.T)
 
-        u_rotated = np.dot(u_resamp, q)
-        v_rotated = np.dot(v_resamp, q)
+        # u_rotated = np.dot(u_resamp, q)
+        # v_rotated = np.dot(v_resamp, q)
 
-        v_rotated_scaled = np.linalg.multi_dot((v_resamp, s_sq, q))  # Calculate reflected, reordered singlular values
+        u_scaled = np.dot(u_resamp, np.diagflat(perm_svd[1]))
+        v_scaled = np.dot(v_resamp, np.diagflat(perm_svd[1]))
+
+        u_rotated = np.dot(u_scaled, q)
+        v_rotated = np.dot(v_scaled, q)
         try:
-            sum_of_squares = np.sum(v_rotated_scaled ** 2, 0)
+            sum_of_squares = np.sum(v_rotated ** 2, 0)
             s_rotated = np.sqrt(sum_of_squares)
         except RuntimeWarning as err:
             if 'overflow' in err:
@@ -140,9 +142,9 @@ class PLSC:
 
         See Krishnan et al., 2011 for more information
         """
-        standard_dev = np.std(permutation_cube, axis=-1)
-        standard_err = standard_dev / np.sqrt(permutation_cube.shape[2])
-        bootz = np.divide(true_observations, standard_err)
+        standard_dev = np.std(permutation_cube, axis=-1, ddof=1)
+        standard_err = standard_dev  # / np.sqrt(permutation_cube.shape[-1])
+        bootz = true_observations / standard_dev  # np.divide(true_observations, standard_err)
 
         return bootz
 
@@ -172,8 +174,8 @@ class PLSC:
         n = 0
         while n != self.n_iters:
             try:
-                perm_y = perm_matrix(y)  # resample(y, replace=False)  # perm_matrix(y)
-                perm_x = perm_matrix(x)  # resample(x, replace=False)  # perm_matrix(x)
+                perm_y = perm_matrix(y)
+                perm_x = perm_matrix(x)
                 perm_svd = self._mplsc(perm_x, perm_y, center_scale=self.center_scale)
             except np.linalg.LinAlgError:
                 continue  # Re-permute data if SVD doesn't converge
@@ -182,6 +184,7 @@ class PLSC:
                 _, rotated_eigs, _ = self._procrustes(true_svd, perm_svd)
             except OverflowError:
                 continue
+            # perm_eigs[n, :] = perm_svd[1]
             perm_eigs[n, :] = rotated_eigs
             n += 1
 
@@ -194,30 +197,36 @@ class PLSC:
 
     def bootstrap_tests(self, x, y):
         true_svd = self._mplsc(x, y, center_scale=self.center_scale)
-        true_y_saliences = true_svd[2]
-        true_x_saliences = true_svd[0]
+        ref_x = true_svd[0]
+        ref_s = true_svd[1]
+        ref_y = true_svd[2]
+
+        true_y_saliences = np.dot(ref_y, np.diagflat(ref_s))
+        true_x_saliences = np.dot(ref_x, np.diagflat(ref_s))
 
         perm_x_cube = np.ndarray(shape=(true_x_saliences.shape[0], true_x_saliences.shape[1], self.n_iters))
         perm_y_cube = np.ndarray(shape=(true_y_saliences.shape[0], true_y_saliences.shape[1], self.n_iters))
         n = 0
         while n != self.n_iters:
             try:
-                # resamp_y = resample(y, replace=True)
-                # resamp_x = resample(x, replace=True)
-                resamp_x, resamp_y = resample_matrices(x, y)
+                resamp_y = resample(y, replace=True)
+                resamp_x = resample(x, replace=True)
+                # resamp_x, resamp_y = resample_matrices(x, y)
                 resamp_svd = self._mplsc(resamp_x, resamp_y, center_scale=self.center_scale)
             except np.linalg.LinAlgError:
                 continue  # Re-resample data if SVD doesn't converge
 
-            # TO-DO: Procrustes Rotation
             try:
                 rotated_ysals = self._procrustes(true_svd, resamp_svd)[2]
                 rotated_xsals = self._procrustes(true_svd, resamp_svd)[0]
+
+                # rotated_ysals = resamp_svd[2]
+                # rotated_xsals = resamp_svd[0]
             except OverflowError:
                 continue
 
-            perm_y_cube[:, :, n] = rotated_ysals  # resamp_svd[0]
-            perm_x_cube[:, :, n] = rotated_xsals  # resamp_svd[2]
+            perm_y_cube[:, :, n] = rotated_ysals
+            perm_x_cube[:, :, n] = rotated_xsals
             n += 1
 
         x_zscores = self._bootstrap_z(true_x_saliences, perm_x_cube)
@@ -322,15 +331,16 @@ if __name__ == "__main__":
 
     logging.info('%s: Running PLSC' % pu.ctime())
     p = PLSC(n_iters=1000, center_scale='ss1')
-    pres = p.permutation_tests(x, y)
-
+    # pres = p.permutation_tests(x, y)
+    #
     # eigs = pres['true_eigs']
     # print(eigs)
     # pvals = pres['p_values']
     # print(pvals)
     # plot_scree(eigs=eigs, pvals=pvals)
-    # bres = p.bootstrap_tests(x, y)
-    # print(bres['y_zscores'])
-    # print(bres['x_zscores'])
+
+    bres = p.bootstrap_tests(x, y)
+    print(bres['y_zscores'])
+    print(bres['x_zscores'])
 
     logging.info('%s: Finished' % pu.ctime())
