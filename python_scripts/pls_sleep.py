@@ -140,7 +140,7 @@ def plot_roi_saliences(rois, conj_res, fig_dir, cmap=None, maxv=40, create_rois=
         else:
             custom_roi = nib.load(fig_dir + '/%s.nii.gz' % lv)
         fname = fig_dir + '/brain_%s' % lv
-        plot_brains(custom_roi, minval=4, maxval=maxv, figpath=fname, cmap=cmap)
+        plot_brains(custom_roi, minval=4, maxval=maxv, figpath=fname, cmap=cmap, cbar=True)
 
 
 def mirror_strfind(strings):
@@ -267,8 +267,8 @@ def pls_psqi_with_bold_alpha_pac(fig_dir, run_check=True):
     brain_res = organize_brain_sals(np.abs(bres['x_zscores']), rois, sessions, latent_vars, comp='sign')
     pu.save_xls(brain_res, fig_dir+'/brain_res.xlsx')
 
-    # conj = brain_res['brain_conjunction']
-    # plot_roi_saliences(rois, conj, fig_dir, maxv=120, create_rois=False)
+    conj = brain_res['brain_conjunction']
+    plot_roi_saliences(rois, conj, fig_dir, maxv=120, create_rois=False)
 
     logging.info('%s: Finished' % pu.ctime())
 
@@ -284,7 +284,7 @@ def pls_psqi_with_ppc_roi_version(fig_dir, run_check=False):
     colnames = list(ppc_first_level)
     connections = [c.split(' ')[1] for c in colnames]
     rois = pd.unique([c.split('-')[0].replace('\n', '') for c in connections])
-    same, mirror = pu.mirror_strfind(rois)
+    same, mirror = mirror_strfind(rois)
     columns_to_drop = [c for m in mirror for c in colnames if m in c]
     meg_df = ppc_first_level.drop(columns=columns_to_drop)
 
@@ -327,7 +327,7 @@ def pls_psqi_with_ppc_roi_version(fig_dir, run_check=False):
     fig, ax = plt.subplots(figsize=(8, 6))
     heatmap(data=heatmap_data, cmap='coolwarm', center=0.0, annot=True, fmt='.2f', cbar=True, square=True, ax=ax)
     fig.savefig(fig_dir+'/heatmap.svg')
-    plt.show()
+    # plt.show()
 
     logging.info('%s: Finished' % pu.ctime())
 
@@ -335,6 +335,6 @@ def pls_psqi_with_ppc_roi_version(fig_dir, run_check=False):
 if __name__ == "__main__":
     meg_subj, meg_sess = pu.proj_data.get_meg_metadata()
     rois = pu.proj_data().roiLabels
-    pls_psqi_with_power(meg_sess, rois, fig_dir='../figures/PLS/psqi_components/power', run_check=True)
-    pls_psqi_with_bold_alpha_pac(fig_dir='../figures/PLS/psqi_components/pac_bold_alpha', run_check=True)
-    pls_psqi_with_ppc_roi_version(fig_dir='../figures/PLS/psqi_components/ppc_network_rois', run_check=True)
+    # pls_psqi_with_power(meg_sess, rois, fig_dir='../figures/PLS/psqi_components/power', run_check=True)
+    pls_psqi_with_bold_alpha_pac(fig_dir='../figures/PLS/psqi_components/pac_bold_alpha', run_check=False)
+    # pls_psqi_with_ppc_roi_version(fig_dir='../figures/PLS/psqi_components/ppc_network_rois', run_check=True)
