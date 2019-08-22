@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 def load_psqi_data():
-    sleep_variables = ['PSQI_Comp1', 'PSQI_Comp2', 'PSQI_Comp3', 'PSQI_Comp4', 'PSQI_Comp5', 'PSQI_Comp6', 'PSQI_Comp7']
+    sleep_variables = ['CardSort_Unadj']  # ['PSQI_Comp1', 'PSQI_Comp2', 'PSQI_Comp3', 'PSQI_Comp4', 'PSQI_Comp5', 'PSQI_Comp6', 'PSQI_Comp7']
     behavior_raw = pd.read_excel('../data/hcp_behavioral.xlsx', index_col=0, sheet_name='cleaned')
     sleep_df = behavior_raw[sleep_variables].astype(float)
 
@@ -212,8 +212,8 @@ def pls_psqi_with_power(sessions, rois, fig_dir, run_check=False):
     brain_res = organize_brain_sals(bres['x_zscores'], rois, sessions, latent_vars, comp='sign')
     pu.save_xls(brain_res, fig_dir+'/brain_res.xlsx')
 
-    # conj = brain_res['brain_conjunction']
-    # plot_roi_saliences(rois, conj, fig_dir, maxv=120, create_rois=True)
+    conj = brain_res['brain_conjunction']
+    plot_roi_saliences(rois, conj, fig_dir, maxv=120, create_rois=False)
 
     logging.info('%s: Finished' % pu.ctime())
 
@@ -335,6 +335,6 @@ def pls_psqi_with_ppc_roi_version(fig_dir, run_check=False):
 if __name__ == "__main__":
     meg_subj, meg_sess = pu.proj_data.get_meg_metadata()
     rois = pu.proj_data().roiLabels
-    # pls_psqi_with_power(meg_sess, rois, fig_dir='../figures/PLS/psqi_components/power', run_check=True)
-    pls_psqi_with_bold_alpha_pac(fig_dir='../figures/PLS/psqi_components/pac_bold_alpha', run_check=False)
-    # pls_psqi_with_ppc_roi_version(fig_dir='../figures/PLS/psqi_components/ppc_network_rois', run_check=True)
+    pls_psqi_with_power(meg_sess, rois, fig_dir='../figures/PLS/card_sort/power', run_check=True)
+    pls_psqi_with_bold_alpha_pac(fig_dir='../figures/PLS/card_sort/pac_bold_alpha', run_check=True)
+    # pls_psqi_with_ppc_roi_version(fig_dir='../figures/PLS/card_sort/ppc_network_rois', run_check=True)
